@@ -4,53 +4,119 @@
   display: flex;
   align-items: center;
   padding: 0 16px;
-  gap: 16px;
+  gap: 14px;
   flex-shrink: 0;
   border-bottom: 3px solid #f59e0b;
   z-index: 100;
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
 }
 
-.logo { display: flex; flex-direction: column; min-width: 180px; }
-
+/* Logo */
+.logo {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  gap: 2px;
+}
 .logoTitle {
   color: #f59e0b;
   font-weight: 800;
   font-size: 14px;
-  letter-spacing: 1px;
+  letter-spacing: .8px;
+  line-height: 1;
+}
+.logoSub {
+  color: rgba(255,255,255,.5);
+  font-size: 10px;
+  letter-spacing: .3px;
 }
 
-.logoSub { color: rgba(255,255,255,0.6); font-size: 10px; }
-
-.nav { display: flex; gap: 6px; flex: 1; }
-
+/* Nav */
+.nav {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
 .navBtn {
-  background: rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.85);
-  border: 1px solid rgba(255,255,255,0.2);
-  padding: 6px 14px;
-  border-radius: 5px;
+  background: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.8);
+  border: 1px solid rgba(255,255,255,.18);
+  padding: 7px 16px;
+  border-radius: 6px;
   font-size: 12px;
-  transition: all 0.2s;
+  font-weight: 600;
+  transition: all .2s;
+  letter-spacing: .2px;
 }
 .navBtn:hover {
-  background: rgba(245,158,11,0.2);
+  background: rgba(245,158,11,.18);
   color: #f59e0b;
-  border-color: rgba(245,158,11,0.5);
+  border-color: rgba(245,158,11,.45);
 }
 .navBtn.active {
   background: #f59e0b;
   color: #1e3a5f;
   border-color: #f59e0b;
-  font-weight: 700;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(245,158,11,.4);
 }
 
-.obraSelector { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.8); font-size: 12px; }
-.obraSelector select {
-  background: rgba(255,255,255,0.15);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.3);
-  padding: 4px 8px;
-  border-radius: 4px;
+/* Seletor de obra */
+.obraSelector {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(255,255,255,.75);
   font-size: 12px;
+  font-weight: 600;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 6px;
+  padding: 5px 10px;
 }
-.obraSelector select option { background: #1e3a5f; color: #fff; }
+.obraSelector select {
+  background: transparent;
+  color: #fff;
+  border: none;
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+}
+.obraSelector select option {
+  background: #1e3a5f;
+  color: #fff;
+}
+
+/* Usuário logado */
+.userArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  padding: 5px 12px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+.userIcon { font-size: 20px; line-height: 1; }
+.userInfo { display: flex; flex-direction: column; gap: 1px; }
+.userName {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+.btnLogout {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.45);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  transition: color .15s;
+}
+.btnLogout:hover { color: #f59e0b; }

@@ -1,33 +1,49 @@
 /* ================================================================
-   GLOBAL CSS — tema claro
+   GLOBAL CSS — Quadro de Metas · Ventura Patamares
    ================================================================ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:         #f0f4f8;
+  --bg:         #eef2f7;
   --surface:    #ffffff;
   --surface2:   #f8fafc;
-  --border:     #d1d9e0;
+  --border:     #d1dce8;
   --accent:     #1a56db;
   --accent2:    #0891b2;
-  --text:       #1e293b;
-  --text-muted: #64748b;
+  --text:       #0f172a;
+  --text-muted: #5a6a7e;
   --hover:      rgba(26,86,219,0.05);
-  --header-h:   58px;
+  --header-h:   56px;
 
-  /* Status */
-  --nao-iniciada:  #f1f5f9;
-  --em-andamento:  #fef3c7;
-  --concluida:     #dcfce7;
-  --atrasada:      #fee2e2;
-  --dente:         #ffedd5;
-  --fvs-bg:        #f0fdf4;
-  --fvs-border:    #16a34a;
+  /* Status — cores mais vivas e contrastadas */
+  --c-ni:       #e8ecf1;
+  --c-ni-brd:   #9baab8;
+  --c-ni-txt:   #4a5568;
+
+  --c-and:      #fde68a;
+  --c-and-brd:  #d97706;
+  --c-and-txt:  #78350f;
+
+  --c-ok:       #bbf7d0;
+  --c-ok-brd:   #16a34a;
+  --c-ok-txt:   #14532d;
+
+  --c-at:       #fecaca;
+  --c-at-brd:   #dc2626;
+  --c-at-txt:   #7f1d1d;
+
+  --c-dente:    #fed7aa;
+  --c-dente-brd:#ea580c;
+  --c-dente-txt:#7c2d12;
+
+  --c-fvs:      #a7f3d0;
+  --c-fvs-brd:  #059669;
+  --c-fvs-txt:  #064e3b;
 }
 
 html, body, #root {
   height: 100%;
-  font-family: 'Segoe UI', Arial, sans-serif;
+  font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: 13px;
@@ -37,39 +53,39 @@ html, body, #root {
 button { cursor: pointer; font-family: inherit; }
 input, select, textarea { font-family: inherit; }
 
-::-webkit-scrollbar       { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f5f9; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar       { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: #e8ecf1; }
+::-webkit-scrollbar-thumb { background: #b0bec8; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #7a8fa0; }
 
 /* ── Tooltip 3D ────────────────────────────────────────────── */
 #tooltip3d {
   display: none;
   position: fixed;
   z-index: 500;
-  background: rgba(255,255,255,0.97);
-  border: 1px solid #d1d9e0;
+  background: rgba(255,255,255,0.98);
+  border: 1px solid #d1dce8;
   border-radius: 8px;
   padding: 10px 14px;
   pointer-events: none;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.14);
   max-width: 220px;
-  color: #1e293b;
+  color: var(--text);
 }
 
 #label3d {
   display: none;
   position: fixed;
   z-index: 501;
-  background: rgba(255,255,255,0.95);
-  border: 1.5px solid #1a56db;
+  background: rgba(255,255,255,0.97);
+  border: 1.5px solid var(--accent);
   border-radius: 5px;
   padding: 3px 9px;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.5px;
   pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.14);
   white-space: nowrap;
-  color: #1a56db;
+  color: var(--accent);
 }

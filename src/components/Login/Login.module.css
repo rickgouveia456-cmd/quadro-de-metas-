@@ -1,0 +1,84 @@
+.overlay {
+  position: fixed; inset: 0;
+  background: linear-gradient(135deg, #0f1f35 0%, #1e3a5f 50%, #0a1628 100%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 36px 40px;
+  width: 420px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.4);
+  display: flex; flex-direction: column; gap: 0;
+}
+
+/* Logo */
+.logo {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #f0f4f8;
+}
+.logoIcon { font-size: 40px; line-height: 1; }
+.logoTexto { display: flex; flex-direction: column; gap: 3px; }
+.logoNome {
+  font-size: 15px; font-weight: 900; color: #1e3a5f;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.logoSub { font-size: 10px; color: #64748b; letter-spacing: .3px; }
+
+/* Form */
+.form { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 2px; }
+
+/* Perfis */
+.perfisList {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.perfilBtn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-radius: 8px;
+  border: 2px solid #e2e8f0; background: #f8fafc;
+  cursor: pointer; transition: all .2s; font-size: 12px;
+  color: #374151; font-weight: 600;
+}
+.perfilBtn:hover { border-color: #94a3b8; background: #f1f5f9; }
+.perfilAtivo { font-weight: 800; color: #1e293b; }
+.perfilIcon { font-size: 18px; }
+.perfilLabel { font-size: 11px; }
+
+/* Input senha */
+.input {
+  padding: 11px 14px; border: 2px solid #e2e8f0; border-radius: 8px;
+  font-size: 13px; color: #0f172a; background: #f8fafc;
+  transition: border-color .15s; outline: none; width: 100%;
+}
+.input:focus { border-color: #1a56db; background: #fff; box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
+
+/* Erro */
+.erro {
+  background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px;
+  padding: 8px 12px; font-size: 12px; color: #b91c1c; font-weight: 600;
+}
+
+/* Botão entrar */
+.btnEntrar {
+  margin-top: 8px; padding: 13px;
+  background: #1e3a5f; color: #fff;
+  border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 800;
+  letter-spacing: .5px; transition: all .2s;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+}
+.btnEntrar:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.btnEntrar:active { transform: translateY(0); }
+.btnEntrar:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+
+/* Footer */
+.footer {
+  margin-top: 20px; text-align: center;
+  font-size: 10px; color: #94a3b8; padding-top: 16px;
+  border-top: 1px solid #f0f4f8;
+}
