@@ -1,0 +1,75 @@
+/* ================================================================
+   GLOBAL CSS — tema claro
+   ================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #f0f4f8;
+  --surface:    #ffffff;
+  --surface2:   #f8fafc;
+  --border:     #d1d9e0;
+  --accent:     #1a56db;
+  --accent2:    #0891b2;
+  --text:       #1e293b;
+  --text-muted: #64748b;
+  --hover:      rgba(26,86,219,0.05);
+  --header-h:   58px;
+
+  /* Status */
+  --nao-iniciada:  #f1f5f9;
+  --em-andamento:  #fef3c7;
+  --concluida:     #dcfce7;
+  --atrasada:      #fee2e2;
+  --dente:         #ffedd5;
+  --fvs-bg:        #f0fdf4;
+  --fvs-border:    #16a34a;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+button { cursor: pointer; font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Tooltip 3D ────────────────────────────────────────────── */
+#tooltip3d {
+  display: none;
+  position: fixed;
+  z-index: 500;
+  background: rgba(255,255,255,0.97);
+  border: 1px solid #d1d9e0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  max-width: 220px;
+  color: #1e293b;
+}
+
+#label3d {
+  display: none;
+  position: fixed;
+  z-index: 501;
+  background: rgba(255,255,255,0.95);
+  border: 1.5px solid #1a56db;
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  white-space: nowrap;
+  color: #1a56db;
+}
