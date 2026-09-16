@@ -405,3 +405,135 @@
 .cellAtrasada .cellText[data-planejada="true"] {
   animation: pisca 1.8s ease-in-out infinite;
 }
+
+/* ── Separador da config bar ─────────────────────────────── */
+.sepBar { width:1px; height:26px; background:#dde4ec; margin:0 2px; flex-shrink:0; }
+
+/* ── Checkbox label ──────────────────────────────────────── */
+.checkLbl {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+}
+
+/* ── Seletor de período ───────────────────────────────────── */
+.periodoSel {
+  display: flex; gap: 2px;
+  background: #f0f4f8;
+  border: 1px solid #dde4ec;
+  border-radius: 6px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+.periodoBtn {
+  padding: 4px 10px;
+  border: none; border-radius: 4px;
+  background: transparent;
+  color: #374151; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+}
+.periodoBtn:hover { background: #e2e8f0; }
+.periodoBtnAtivo  { background: #1e3a5f !important; color: #fff !important; }
+
+/* ── Botões coloridos ─────────────────────────────────────── */
+.btnVerde   { background: #f0fdf4 !important; border-color: #86efac !important; color: #15803d !important; }
+.btnVerde:hover { background: #dcfce7 !important; }
+.btnLaranja { background: #fff7ed !important; border-color: #fed7aa !important; color: #c2410c !important; }
+.btnLaranja:hover { background: #ffedd5 !important; }
+.btnRoxo    { background: #faf5ff !important; border-color: #d8b4fe !important; color: #7c3aed !important; }
+.btnRoxo:hover { background: #f3e8ff !important; }
+.btnAzul    { background: #eff6ff !important; border-color: #93c5fd !important; color: #1d4ed8 !important; font-weight: 800 !important; }
+.btnAzul:hover { background: #dbeafe !important; }
+
+/* ── Badge de macrofluxo na legenda ──────────────────────── */
+.legendaSep { width: 1px; height: 16px; background: #dde4ec; margin: 0 4px; }
+.macroBadge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 9px; font-weight: 800;
+  letter-spacing: .4px;
+}
+
+/* ── Toast ───────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  z-index: 9999;
+  background: #1e3a5f;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2);
+  animation: slideUp .25s ease;
+  pointer-events: none;
+}
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Drag & Drop highlight ───────────────────────────────── */
+.cell[draggable="true"] { cursor: grab; }
+.cell[draggable="true"]:active { cursor: grabbing; }
+
+/* ── Quantidade do período ───────────────────────────────── */
+.periodoQtd {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 4px;
+  padding-left: 6px;
+  border-left: 1px solid #dde4ec;
+}
+.periodoInput {
+  width: 42px;
+  padding: 3px 5px;
+  border: 1px solid #c8d4e0;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e3a5f;
+  text-align: center;
+  background: #fff;
+  outline: none;
+}
+.periodoInput:focus { border-color: #1a56db; box-shadow: 0 0 0 2px rgba(26,86,219,.1); }
+.periodoUnit {
+  font-size: 10px;
+  color: #5a6a7e;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Célula reprogramada — pisca vermelho forte ──────────── */
+@keyframes piscaReprog {
+  0%,100% { background: #ef4444; opacity: 1;   box-shadow: 0 0 0 2px #dc2626; }
+  50%      { background: #dc2626; opacity: 0.6; box-shadow: 0 0 8px 3px #ef4444; }
+}
+.cellReprogramada {
+  background: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: #fff !important;
+  animation: piscaReprog 0.9s ease-in-out infinite !important;
+  z-index: 3;
+}
+
+/* ── GAP visual ─────────────────────────────────────────────── */
+.cellGap {
+  background: #7f1d1d !important;
+  border: 2px dashed #ef4444 !important;
+  color: #fca5a5 !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  z-index: 2;
+}
+.cellGap:hover {
+  background: #991b1b !important;
+}
+
+/* ── Legenda GAP ────────────────────────────────────────────── */
+.corGap {
+  background: #7f1d1d;
+  border: 2px dashed #ef4444;
+}

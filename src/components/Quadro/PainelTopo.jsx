@@ -53,6 +53,22 @@ export default function PainelTopo({ obraAtual, obras, stats }) {
         <div className={styles.blocoValor}>{stats.metasDia}</div>
       </div>
 
+      {/* PPC — Percentual de Planos Concluídos (semana atual) */}
+      <div className={styles.bloco} title="PPC — Percentual de Planos Concluídos: metas planejadas para esta semana que foram concluídas">
+        <div className={styles.blocoLabel}>PPC SEM.</div>
+        <div className={styles.blocoValor} style={{ color: stats.ppcCor }}>
+          {stats.ppc ?? '—'}
+        </div>
+      </div>
+
+      {/* PPCQ — PPC incluindo qualidade (FVs) */}
+      <div className={styles.bloco} title="PPCQ — PPC com Qualidade: inclui verificação de FVs concluídas na semana">
+        <div className={styles.blocoLabel}>PPCQ SEM.</div>
+        <div className={styles.blocoValor} style={{ color: stats.ppcqCor }}>
+          {stats.ppcq ?? '—'}
+        </div>
+      </div>
+
       <div className={styles.bloco}>
         <div className={styles.blocoLabel}>EM ATRASO</div>
         <div className={styles.blocoValor}

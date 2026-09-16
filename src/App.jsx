@@ -1,33 +1,42 @@
 import { useState, useEffect } from 'react';
-import Header       from './components/Header/Header';
-import Quadro       from './components/Quadro/Quadro';
-import Torre3D      from './components/Torre3D/Torre3D';
+import Header         from './components/Header/Header';
+import Quadro         from './components/Quadro/Quadro';
+import Torre3D        from './components/Torre3D/Torre3D';
 import ControleDiario from './components/ControleDiario/ControleDiario';
-import Login        from './components/Login/Login';
-import { useObra }  from './hooks/useObra';
-import { useAuth }  from './hooks/useAuth';
+import Login          from './components/Login/Login';
+import { useObra }    from './hooks/useObra';
+import { useAuth }    from './hooks/useAuth';
 import { getDiasUteisEntre, hoje, formatDate } from './data/datas';
 import './styles/global.css';
 
 export default function App() {
   const [tela, setTela] = useState('quadro');
 
-  // Auth
+  // ── Auth ──────────────────────────────────────────────────────
   const { user, login, logout } = useAuth();
 
-  // Obra
+  // ── Obra ──────────────────────────────────────────────────────
   const {
     obraAtual, setObraAtual,
     obras, tipologias,
+    estado,
     getEstado, setEstadoMeta,
     atualizarDatas, atualizarTipologia,
     adicionarTipologia, removerTipologia,
+    adicionarObra,
     inicializarDatas,
+    getHistorico, limparHistorico,
+    // Base Zero
+    salvarBaseZero, getBaseZero, temBaseZero,
+    // Feriados
+    feriadosCustom, adicionarFeriado, removerFeriado,
+    // Restrições
+    getRestricoes, adicionarRestricao, atualizarRestricao, removerRestricao,
   } = useObra();
 
   useEffect(() => { inicializarDatas(); }, []);
 
-  // Alerta 80 dias
+  // ── Alerta 80 dias ────────────────────────────────────────────
   const [alerta, setAlerta] = useState(null);
 
   function abrirAlerta() {
@@ -42,7 +51,7 @@ export default function App() {
     setAlerta({ tipo: rest <= 80 ? 'alerta' : 'ok', dec, rest, pct, prox, proxId, dataInicio: obra.dataInicio, dataTermino: obra.dataTermino });
   }
 
-  // — Tela de login —
+  // ── Tela de login ─────────────────────────────────────────────
   if (!user) {
     return <Login onLogin={login} />;
   }
@@ -64,16 +73,30 @@ export default function App() {
         {tela === 'quadro' && (
           <Quadro
             obraAtual={obraAtual} obras={obras} tipologias={tipologias}
+            estado={estado}
             getEstado={getEstado} setEstadoMeta={setEstadoMeta}
             atualizarDatas={atualizarDatas} atualizarTipologia={atualizarTipologia}
             adicionarTipologia={adicionarTipologia} removerTipologia={removerTipologia}
+            adicionarObra={adicionarObra}
             onAlerta={abrirAlerta}
             user={user}
+            getHistorico={getHistorico}
+            limparHistorico={limparHistorico}
+            salvarBaseZero={salvarBaseZero}
+            getBaseZero={getBaseZero}
+            temBaseZero={temBaseZero}
+            feriadosCustom={feriadosCustom}
+            adicionarFeriado={adicionarFeriado}
+            removerFeriado={removerFeriado}
+            getRestricoes={getRestricoes}
+            adicionarRestricao={adicionarRestricao}
+            atualizarRestricao={atualizarRestricao}
+            removerRestricao={removerRestricao}
           />
         )}
 
         {tela === 'torre' && (
-          <Torre3D obraAtual={obraAtual} getEstado={getEstado} />
+          <Torre3D obraAtual={obraAtual} obras={obras} getEstado={getEstado} />
         )}
 
         {tela === 'diario' && (
