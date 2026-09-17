@@ -205,18 +205,31 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
       // deixadas em branco
 
       // ── LINHA 13: CABEÇALHO (r=12) ─────────────────────────
-      setCell(ws, 12, C_SEQ,   'SEQ.',              makeStyle('FF1E3A5F', COR_BRANCO, true, 9));
-      setCell(ws, 12, C_NOME,  'ATIVIDADES',        makeStyle('FF1E3A5F', COR_BRANCO, true, 9, false, 'left'));
+      setCell(ws, 12, C_SEQ,   'CÓD.',              makeStyle('FF1E3A5F', COR_BRANCO, true, 9));
+      setCell(ws, 12, C_NOME,  'PACOTE',            makeStyle('FF1E3A5F', COR_BRANCO, true, 9, false, 'left'));
       setCell(ws, 12, C_DESC,  'DESCRIÇÃO DA META', makeStyle('FF1E3A5F', COR_BRANCO, true, 9, false, 'left'));
       setCell(ws, 12, C_VAZIO, '',                  makeStyle('FF1E3A5F', COR_BRANCO));
-      setCell(ws, 12, C_START, 'START',             makeStyle(COR_AMARELO, COR_PRETO, true, 9));
-      // Números sequenciais das unidades
+      setCell(ws, 12, C_START, '',                  makeStyle('FF1E3A5F', COR_BRANCO));
+      // Colunas de unidades: número sequencial na linha 13
       unis.forEach((u, i) => {
-        setCell(ws, 12, C_UNI0 + i, i + 1, makeStyle('FF334155', COR_BRANCO, true, 8));
+        setCell(ws, 12, C_UNI0 + i, i + 1,
+          makeStyle('FF334155', COR_BRANCO, true, 8));
       });
 
-      // ── LINHAS DE DADOS: 2 por pacote (atividade + FVS) ───
-      let ROW = 13; // r=13 = linha 14 do Excel
+      // ── LINHA 14: sub-cabeçalho PAV+CICLO (r=13) ──────────
+      setCell(ws, 13, C_SEQ,   '', makeStyle('FF1E3A5F', COR_BRANCO));
+      setCell(ws, 13, C_NOME,  '', makeStyle('FF1E3A5F', COR_BRANCO));
+      setCell(ws, 13, C_DESC,  '', makeStyle('FF1E3A5F', COR_BRANCO));
+      setCell(ws, 13, C_VAZIO, '', makeStyle('FF1E3A5F', COR_BRANCO));
+      setCell(ws, 13, C_START, '', makeStyle('FF1E3A5F', COR_BRANCO));
+      unis.forEach((u, i) => {
+        // Formato compacto: "1A", "1B", "2A"...
+        setCell(ws, 13, C_UNI0 + i, `${u.pav}${u.ciclo}`,
+          makeStyle('FF475569', COR_BRANCO, false, 7));
+      });
+
+      // Dados começam na linha 15 (r=14)
+      let ROW = 14;
 
       pacs.forEach((p, pi) => {
         const corBg   = hexToArgb(p.cor);
@@ -232,29 +245,26 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
         // Col START: observação ou vazio
         setCell(ws, rAT, C_START, '',         makeStyle('FFFAFAFA', 'FF374151'));
 
-        // Células das unidades
+        // Células das unidades — conteúdo = data DD/MM (igual ao Porto Aruana)
         unis.forEach((u, i) => {
           const e  = getEstado(obraAtual, p.id, u.cod);
           const dp = e.dataPlanejada;
           const st = e.status || 'nao-iniciada';
 
-          // Conteúdo da célula: "Pav. X\nCiclo Y" (igual ao Porto Aruana)
-          const conteudo = `Pav. ${u.pav}\nCiclo ${u.ciclo}`;
-
           // Cor da célula: cor base do pacote, ajustada pelo status
           let bg = corBg;
-          if (st === 'concluida')         bg = 'FF16A34A';  // verde
-          else if (st === 'atrasada')     bg = 'FFDC2626';  // vermelho
-          else if (st === 'em-andamento') bg = 'FFF59E0B';  // amarelo
-          else if (st === 'dente')        bg = 'FFEA580C';  // laranja
-          // nao-iniciada: cor original do pacote
+          if (st === 'concluida')         bg = 'FF16A34A';
+          else if (st === 'atrasada')     bg = 'FFDC2626';
+          else if (st === 'em-andamento') bg = 'FFF59E0B';
+          else if (st === 'dente')        bg = 'FFEA580C';
 
           const txt = textColor(bg);
 
-          // Só mostra a célula se tem data planejada
           if (dp) {
-            setCell(ws, rAT, C_UNI0 + i, conteudo,
-              { ...makeStyle(bg, txt, false, 7, true, 'center'), });
+            // Data compacta DD/MM — igual ao Porto Aruana
+            const [y, m, d] = dp.split('-');
+            setCell(ws, rAT, C_UNI0 + i, `${d}/${m}`,
+              makeStyle(bg, txt, false, 8, false, 'center'));
           } else {
             setCell(ws, rAT, C_UNI0 + i, '',
               makeStyle('FFFFFFFF', 'FFCBD5E1'));
@@ -290,31 +300,32 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
 
       // ── Range e configurações ──────────────────────────────
       const lastRow = ROW;
-      ws['!ref'] = XLSX.utils.encode_range({ r: 0, c: 0 }, { r: lastRow, c: totalCols - 1 });
+      ws['!ref'] = XLSX.utils.encode_range({ r: 0, c: 0 }, { r: lastRow + 1, c: totalCols - 1 });
       ws['!merges'] = merges;
 
       // Larguras das colunas
       ws['!cols'] = [
-        { wch: 5  },   // A — SEQ
-        { wch: 26 },   // B — ATIVIDADES
-        { wch: 34 },   // C — DESCRIÇÃO
+        { wch: 5  },   // A — CÓD
+        { wch: 22 },   // B — PACOTE
+        { wch: 30 },   // C — DESCRIÇÃO
         { wch: 3  },   // D — vazio
-        { wch: 10 },   // E — START
-        ...unis.map(() => ({ wch: 9 })),  // unidades
+        { wch: 3  },   // E — vazio
+        ...unis.map(() => ({ wch: 7 })),  // unidades — compacto DD/MM
       ];
 
       // Alturas das linhas
       const rowH = [];
-      for (let i = 0; i < 12; i++) rowH.push({ hpt: i < 2 ? 6 : i < 10 ? 14 : 6 });
-      rowH.push({ hpt: 16 }); // linha 13 cabeçalho
+      for (let i = 0; i < 13; i++) rowH.push({ hpt: i < 2 ? 5 : i < 10 ? 13 : 5 });
+      rowH.push({ hpt: 14 }); // linha 13 — número seq
+      rowH.push({ hpt: 11 }); // linha 14 — pav+ciclo
       pacs.forEach(() => {
-        rowH.push({ hpt: 28 }); // atividade (altura maior pra "Pav. X\nCiclo Y")
-        rowH.push({ hpt: 12 }); // FVS
+        rowH.push({ hpt: 14 }); // atividade
+        rowH.push({ hpt: 10 }); // FVS
       });
       ws['!rows'] = rowH;
 
-      // Congela as primeiras 5 colunas (A-E)
-      ws['!freeze'] = { xSplit: 5, ySplit: 13, activeCell: 'F14', sqref: 'F14' };
+      // Congela 5 colunas fixas e 2 linhas de cabeçalho
+      ws['!freeze'] = { xSplit: 5, ySplit: 14, activeCell: 'F15', sqref: 'F15' };
 
       XLSX.utils.book_append_sheet(wb, ws, `Quadro_${obra.nome || obraAtual}`);
 
@@ -372,8 +383,8 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
     }));
     const pctGeral = totalGeral > 0 ? Math.round((concGeral / totalGeral) * 100) : 0;
 
-    const thUnis = unis.map(u =>
-      `<th style="min-width:26px;padding:1px 2px;font-size:6px;background:#334155;color:#fff;border:1px solid #475569;writing-mode:vertical-rl;transform:rotate(180deg);height:44px;white-space:nowrap">Pv.${u.pav} ${u.ciclo}</th>`
+    const thUnis = unis.map((u, i) =>
+      `<th style="min-width:26px;padding:1px 0;font-size:6px;background:#334155;color:#fff;border:1px solid #475569;white-space:nowrap;text-align:center">${i+1}<br><span style="font-size:5px;opacity:.8">${u.pav}${u.ciclo}</span></th>`
     ).join('');
 
     const linhas = pacs.map(p => {
@@ -382,7 +393,7 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
       const cellsAT = unis.map(u => {
         const e  = getEstado(obraAtual, p.id, u.cod);
         const dp = e.dataPlanejada;
-        if (!dp) return `<td style="background:#fff;border:1px solid #e2e8f0"></td>`;
+        if (!dp) return `<td style="background:#fff;border:1px solid #e2e8f0;min-width:26px"></td>`;
         const st = e.status || 'nao-iniciada';
         let bg = cor;
         if (st === 'concluida')         bg = '#16a34a';
@@ -390,7 +401,7 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
         else if (st === 'em-andamento') bg = '#f59e0b';
         else if (st === 'dente')        bg = '#ea580c';
         const dd = dp.slice(8) + '/' + dp.slice(5, 7);
-        return `<td style="min-width:26px;padding:0 1px;font-size:6px;background:${bg};color:#fff;text-align:center;border:1px solid rgba(0,0,0,.1);white-space:nowrap">${dd}</td>`;
+        return `<td style="min-width:26px;padding:1px 0;font-size:6.5px;background:${bg};color:#fff;text-align:center;border:1px solid rgba(0,0,0,.1);font-weight:600">${dd}</td>`;
       }).join('');
       const cellsFVS = unis.map(u => {
         const e  = getEstado(obraAtual, p.id, u.cod);
