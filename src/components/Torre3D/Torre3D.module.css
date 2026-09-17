@@ -59,3 +59,24 @@
   box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:all .18s;
 }
 .ctrlBtn:hover { background:#dbeafe; border-color:#1d4ed8; }
+
+/* ── Seletor de torres ── */
+.torreSel { display:flex; flex-direction:column; gap:6px; }
+.torreSelTitle {
+  font-size:11px; font-weight:800; color:#1e3a5f;
+  text-transform:uppercase; letter-spacing:.6px;
+  border-bottom:2px solid #dbeafe; padding-bottom:6px; margin-bottom:2px;
+}
+.torreBtn {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 10px; border-radius:8px;
+  border:1.5px solid #e2e8f0; background:#f8fafc;
+  cursor:pointer; transition:all .2s; text-align:left;
+  position:relative;
+}
+.torreBtn:hover { border-color:#93c5fd; background:#eff6ff; }
+.torreBtnAtivo  { border-color:#1e3a5f; background:#eff6ff; box-shadow:0 0 0 2px rgba(30,58,95,.15); }
+.torreBtnIcon   { font-size:18px; flex-shrink:0; }
+.torreBtnNome   { font-size:12px; font-weight:800; color:#1e3a5f; }
+.torreBtnSub    { font-size:10px; color:#94a3b8; margin-top:1px; }
+.torreBtnCheck  { position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:10px; color:#1e3a5f; }

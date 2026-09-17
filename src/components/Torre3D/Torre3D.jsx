@@ -1,104 +1,142 @@
+// ================================================================
+// Torre3D.jsx — 3 torres no condomínio, animação ao trocar
+// ================================================================
 import { useEffect, useRef, useState } from 'react';
 import { PACOTES_BASE } from '../../data/pacotes';
 import styles from './Torre3D.module.css';
 import { buildTorre3D } from './torre3d.engine';
 
-// Constantes da torre
 const PAVIMENTOS = [
-  { num:'T',   label:'Térreo',                   idx:0  },
+  { num:'T', label:'Térreo', idx:0 },
   ...Array.from({length:15},(_,i)=>({ num:i+1, label:`${i+1}º Pavimento`, idx:i+1 })),
-  { num:'COB', label:'Cobertura / Laje Técnica',  idx:16 },
+  { num:'COB', label:'Cobertura', idx:16 },
 ];
-
 const CICLOS = [
-  { ciclo:'A', tipo:'Tipo 4', area:'56,69m²' },
-  { ciclo:'B', tipo:'Tipo 3', area:'48,31m²' },
-  { ciclo:'C', tipo:'Tipo 3', area:'48,31m²' },
-  { ciclo:'D', tipo:'Tipo 4', area:'56,69m²' },
+  {ciclo:'A',tipo:'Tipo 4',area:'56,69m²'},
+  {ciclo:'B',tipo:'Tipo 3',area:'48,31m²'},
+  {ciclo:'C',tipo:'Tipo 3',area:'48,31m²'},
+  {ciclo:'D',tipo:'Tipo 4',area:'56,69m²'},
 ];
+const STATUS_CSS   = {livre:'#64748b',andamento:'#f59e0b',concluido:'#16a34a',atrasado:'#dc2626'};
+const STATUS_LABEL = {livre:'Não Iniciado',andamento:'Em Andamento',concluido:'Concluído',atrasado:'Em Atraso'};
 
-const STATUS_CSS = { livre:'#94a3b8', andamento:'#fbbf24', concluido:'#4ade80', atrasado:'#f87171' };
-const STATUS_LABEL = { livre:'Não Iniciado', andamento:'Em Andamento', concluido:'Concluído', atrasado:'Em Atraso' };
+// IDs das obras → índice da torre no cenário (0=TC, 1=TB, 2=TA)
+const OBRA_TORRE_IDX = { TC:0, TB:1, TA:2 };
 
-export default function Torre3D({ obraAtual, getEstado }) {
-  const wrapRef    = useRef(null);
-  const canvasRef  = useRef(null);
-  const engineRef  = useRef(null);
+export default function Torre3D({ obraAtual, obras, getEstado }) {
+  const wrapRef   = useRef(null);
+  const canvasRef = useRef(null);
+  const engineRef = useRef(null);
   const [aptoInfo, setAptoInfo] = useState(null);
+  const [torreAtiva, setTorreAtiva] = useState(OBRA_TORRE_IDX[obraAtual] ?? 0);
 
-  function getStatusApto(pav, ciclo) {
-    const cod = (pav === 'T' ? 'T' : String(pav)) + ciclo;
-    let total=0, conc=0, atr=0, and=0;
+  // ── Helpers de status ──────────────────────────────────────
+  function getStatusApto(obraId, pav, ciclo) {
+    const cod = (pav==='T'?'T':String(pav))+ciclo;
+    let conc=0,atr=0,and=0;
     PACOTES_BASE.forEach(p => {
-      total++;
-      const st = getEstado(obraAtual, p.id, cod).status || 'nao-iniciada';
-      if (st === 'concluida')      conc++;
-      else if (st === 'atrasada')  atr++;
-      else if (st === 'em-andamento') and++;
+      const st = getEstado(obraId, p.id, cod).status||'nao-iniciada';
+      if (st==='concluida')      conc++;
+      else if (st==='atrasada')  atr++;
+      else if (st==='em-andamento') and++;
     });
-    if (!total)           return 'livre';
-    if (atr > 0)          return 'atrasado';
-    if (conc === total)   return 'concluido';
-    if (conc > 0 || and > 0) return 'andamento';
+    if (atr>0) return 'atrasado';
+    if (conc===PACOTES_BASE.length) return 'concluido';
+    if (conc>0||and>0) return 'andamento';
     return 'livre';
   }
 
-  function getProgresso(pav, ciclo) {
-    const cod = (pav === 'T' ? 'T' : String(pav)) + ciclo;
-    const total = PACOTES_BASE.length;
-    const conc  = PACOTES_BASE.filter(p => getEstado(obraAtual, p.id, cod).status === 'concluida').length;
-    return { total, conc, pct: total > 0 ? Math.round((conc/total)*100) : 0 };
+  function getProgresso(obraId, pav, ciclo) {
+    const cod=(pav==='T'?'T':String(pav))+ciclo;
+    const total=PACOTES_BASE.length;
+    const conc=PACOTES_BASE.filter(p=>getEstado(obraId,p.id,cod).status==='concluida').length;
+    return {total,conc,pct:Math.round((conc/total)*100)};
   }
 
+  // ── Inicializar engine ─────────────────────────────────────
   useEffect(() => {
-    if (!wrapRef.current || !canvasRef.current) return;
-    engineRef.current = buildTorre3D({
-      wrapper:  wrapRef.current,
-      canvas:   canvasRef.current,
-      pavimentos: PAVIMENTOS,
-      ciclos:     CICLOS,
-      getStatus:  (pav, ciclo) => getStatusApto(pav, ciclo),
-      onClickApto: (ud) => {
-        const prog = getProgresso(ud.pav, ud.ciclo);
-        const cod  = (ud.pav === 'T' ? 'T' : String(ud.pav)) + ud.ciclo;
-        const st   = getStatusApto(ud.pav, ud.ciclo);
-        const pkHtml = PACOTES_BASE.map(p => {
-          const pst = getEstado(obraAtual, p.id, cod).status || 'nao-iniciada';
-          const icons = { concluida:'✅', atrasada:'🔴','em-andamento':'🟡', dente:'🦷','nao-iniciada':'⚪' };
-          return `<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:10px;">
-            <span style="color:rgba(255,255,255,.65)">${p.codigo}</span><span>${icons[pst]||'⚪'}</span></div>`;
-        }).join('');
-        setAptoInfo({ cod, ud, prog, st, pkHtml });
-      },
-    });
+    if (!wrapRef.current||!canvasRef.current) return;
+
+    const obraIds = ['TC','TB','TA'];
+
+    try {
+      engineRef.current = buildTorre3D({
+        wrapper:    wrapRef.current,
+        canvas:     canvasRef.current,
+        pavimentos: PAVIMENTOS,
+        ciclos:     CICLOS,
+        obraIds,
+        getStatus: (torreIdx, pav, ciclo) =>
+          getStatusApto(obraIds[torreIdx]||'TC', pav, ciclo),
+        onClickApto: (ud) => {
+          const obraId = obraIds[ud.torreIdx]||'TC';
+          const prog   = getProgresso(obraId, ud.pav, ud.ciclo);
+          const cod    = (ud.pav==='T'?'T':String(ud.pav))+ud.ciclo;
+          const st     = getStatusApto(obraId, ud.pav, ud.ciclo);
+          const pkHtml = PACOTES_BASE.map(p => {
+            const pst=getEstado(obraId,p.id,cod).status||'nao-iniciada';
+            const icons={concluida:'✅',atrasada:'🔴','em-andamento':'🟡',dente:'🦷','nao-iniciada':'⚪'};
+            return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #e8eef2;font-size:11px;">
+              <span style="color:#374151;font-weight:600">${p.codigo}</span>
+              <span>${icons[pst]||'⚪'}</span></div>`;
+          }).join('');
+          setAptoInfo({cod,ud,prog,st,pkHtml,obraId});
+        },
+      });
+    } catch(err) {
+      console.error('Torre3D engine error:', err);
+    }
+
     return () => engineRef.current?.dispose();
   }, []);
 
-  // Refresh cores quando muda estado
+  // Refresh cores ao mudar estado
   useEffect(() => {
-    engineRef.current?.refresh(getStatusApto);
+    const obraIds=['TC','TB','TA'];
+    engineRef.current?.refresh((tIdx,pav,ciclo)=>
+      getStatusApto(obraIds[tIdx]||'TC',pav,ciclo)
+    );
   });
+
+  // ── Trocar torre com animação ──────────────────────────────
+  function trocarTorre(idx) {
+    if (idx===torreAtiva) return;
+    setTorreAtiva(idx);
+    setAptoInfo(null);
+    engineRef.current?.flyToTorre(idx);
+  }
+
+  const nomesTorre = ['Torre C', 'Torre B', 'Torre A'];
+  const coresTorre = ['#1e3a5f','#0f4c8c','#0a3060'];
 
   return (
     <div className={styles.container}>
       {/* Sidebar */}
       <div className={styles.sidebar}>
-        <h3 className={styles.sideTitle}>🏢 Ventura Patamares</h3>
-        <div className={styles.infoGrid}>
-          {[['Pavimentos','17'],['Apartamentos','136'],['Aptos/Pav','8 (4F+4F)'],['Núcleo','ELV + ESC PCF']].map(([l,v])=>(
-            <div key={l} className={styles.infoRow}>
-              <span className={styles.infoLabel}>{l}:</span>
-              <span className={styles.infoVal}>{v}</span>
-            </div>
+
+        {/* Seletor de torre */}
+        <div className={styles.torreSel}>
+          <div className={styles.torreSelTitle}>🏢 Torres do Condomínio</div>
+          {[0,1,2].map(idx => (
+            <button key={idx}
+              className={`${styles.torreBtn} ${torreAtiva===idx?styles.torreBtnAtivo:''}`}
+              onClick={() => trocarTorre(idx)}>
+              <span className={styles.torreBtnIcon}>🏗</span>
+              <div>
+                <div className={styles.torreBtnNome}>{nomesTorre[idx]}</div>
+                <div className={styles.torreBtnSub}>17 pav · 136 aptos</div>
+              </div>
+              {torreAtiva===idx && <span className={styles.torreBtnCheck}>●</span>}
+            </button>
           ))}
         </div>
 
         <div className={styles.legBox}>
           <div className={styles.legTitle}>Legenda</div>
-          {[['livre','#4a5568','Não Iniciado'],['andamento','#d97706','Em Andamento'],
+          {[['livre','#94a3b8','Não Iniciado'],['andamento','#f59e0b','Em Andamento'],
             ['concluido','#16a34a','Concluído'],['atrasado','#dc2626','Em Atraso']].map(([k,c,l])=>(
             <div key={k} className={styles.legItem}>
-              <span className={styles.legCor} style={{ background:c }} />
+              <span className={styles.legCor} style={{background:c}}/>
               {l}
             </div>
           ))}
@@ -107,11 +145,11 @@ export default function Torre3D({ obraAtual, getEstado }) {
         <div className={styles.pavSel}>
           <div className={styles.pavSelTitle}>Focar Pavimento</div>
           <div className={styles.pavBtns}>
-            {PAVIMENTOS.map(p => (
+            {PAVIMENTOS.map(p=>(
               <button key={p.idx} className={styles.pavBtn}
-                onClick={() => engineRef.current?.focusPav(p.idx)}
+                onClick={()=>engineRef.current?.focusPav(torreAtiva,p.idx)}
                 title={p.label}>
-                {p.num === 'T' ? 'Tér' : p.num === 'COB' ? 'Cob' : String(p.num)}
+                {p.num==='T'?'Tér':p.num==='COB'?'Cob':String(p.num)}
               </button>
             ))}
           </div>
@@ -121,20 +159,22 @@ export default function Torre3D({ obraAtual, getEstado }) {
           <div className={styles.aptoInfoTitle}>Apartamento</div>
           {aptoInfo ? (
             <div>
-              <div style={{ fontSize:20,fontWeight:800,color:'#ffd600',marginBottom:3 }}>{aptoInfo.cod}</div>
-              <div style={{ fontSize:11,marginBottom:1 }}>{aptoInfo.ud.tipo} · {aptoInfo.ud.area}</div>
-              <div style={{ fontSize:10,color:'rgba(255,255,255,.4)',marginBottom:8 }}>
+              <div style={{fontSize:22,fontWeight:900,color:'#1e3a5f',marginBottom:2}}>{aptoInfo.cod}</div>
+              <div style={{fontSize:11,color:'#5a6a7e',marginBottom:2}}>{aptoInfo.ud.tipo} · {aptoInfo.ud.area}</div>
+              <div style={{fontSize:10,color:'#94a3b8',marginBottom:6}}>
                 {aptoInfo.ud.pavLabel} · {aptoInfo.ud.fachada==='frente'?'Fachada Sul':'Fachada Norte'}
               </div>
-              <div style={{ fontSize:13,fontWeight:600,color:STATUS_CSS[aptoInfo.st],marginBottom:4 }}>{STATUS_LABEL[aptoInfo.st]}</div>
-              <div style={{ fontSize:10,color:'rgba(255,255,255,.4)',marginBottom:3 }}>
+              <div style={{fontSize:13,fontWeight:800,color:STATUS_CSS[aptoInfo.st],marginBottom:6}}>
+                {STATUS_LABEL[aptoInfo.st]}
+              </div>
+              <div style={{fontSize:11,color:'#374151',marginBottom:4}}>
                 {aptoInfo.prog.conc}/{aptoInfo.prog.total} metas · {aptoInfo.prog.pct}%
               </div>
-              <div style={{ height:5,background:'rgba(255,255,255,.08)',borderRadius:2,marginBottom:10,overflow:'hidden' }}>
-                <div style={{ height:'100%',width:`${aptoInfo.prog.pct}%`,background:STATUS_CSS[aptoInfo.st],borderRadius:2 }} />
+              <div style={{height:6,background:'#e2e8f0',borderRadius:3,marginBottom:10,overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${aptoInfo.prog.pct}%`,background:STATUS_CSS[aptoInfo.st],borderRadius:3,transition:'width .4s'}}/>
               </div>
-              <div style={{ fontSize:9,fontWeight:700,color:'rgba(255,255,255,.4)',marginBottom:4,textTransform:'uppercase' }}>Metas</div>
-              <div style={{ maxHeight:200,overflowY:'auto' }} dangerouslySetInnerHTML={{ __html: aptoInfo.pkHtml }} />
+              <div style={{fontSize:9,fontWeight:700,color:'#94a3b8',marginBottom:4,textTransform:'uppercase',letterSpacing:'.5px'}}>Metas por Pacote</div>
+              <div style={{maxHeight:200,overflowY:'auto',fontSize:11}} dangerouslySetInnerHTML={{__html:aptoInfo.pkHtml}}/>
             </div>
           ) : (
             <div className={styles.aptoInfoEmpty}>Clique em um apartamento para ver os detalhes.</div>
@@ -142,21 +182,21 @@ export default function Torre3D({ obraAtual, getEstado }) {
         </div>
       </div>
 
-      {/* Canvas 3D */}
+      {/* Canvas */}
       <div className={styles.canvasWrap} ref={wrapRef}>
-        <canvas id="canvas3d" ref={canvasRef} className={styles.canvas} />
-        <div className={styles.hint}>🖱 Arrastar para girar · Scroll para zoom · Clique no apto para detalhes</div>
-        <div id="tooltip3d" />
-        <div id="label3d" />
+        <canvas id="canvas3d" ref={canvasRef} className={styles.canvas}/>
+        <div className={styles.hint}>🖱 Arrastar para girar · Scroll para zoom · Clique no apartamento</div>
+        <div id="tooltip3d"/>
+        <div id="label3d"/>
         <div className={styles.controls}>
           <div className={styles.ctrlRow}>
-            <button className={styles.ctrlBtn} onClick={() => engineRef.current?.rotateLeft()}>◀</button>
-            <button className={styles.ctrlBtn} onClick={() => engineRef.current?.resetCamera()}>⌖</button>
-            <button className={styles.ctrlBtn} onClick={() => engineRef.current?.rotateRight()}>▶</button>
+            <button className={styles.ctrlBtn} onClick={()=>engineRef.current?.rotateLeft()}>◀</button>
+            <button className={styles.ctrlBtn} onClick={()=>engineRef.current?.resetCamera()}>⌖</button>
+            <button className={styles.ctrlBtn} onClick={()=>engineRef.current?.rotateRight()}>▶</button>
           </div>
           <div className={styles.ctrlRow}>
-            <button className={styles.ctrlBtn} onClick={() => engineRef.current?.zoomIn()}>+</button>
-            <button className={styles.ctrlBtn} onClick={() => engineRef.current?.zoomOut()}>−</button>
+            <button className={styles.ctrlBtn} onClick={()=>engineRef.current?.zoomIn()}>+</button>
+            <button className={styles.ctrlBtn} onClick={()=>engineRef.current?.zoomOut()}>−</button>
           </div>
         </div>
       </div>
