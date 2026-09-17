@@ -1,61 +1,81 @@
 // ================================================================
-// ModalExportar — Excel modelo Porto Aruana
-// Layout: linhas = unidades (pav + ciclo), colunas = pacotes de trabalho
-// Célula = data planejada  |  cor = status
+// ModalExportar — Excel EXATO modelo Porto Aruana / Linha Verde
+//
+// Layout:
+//   Col A  = Macrofluxo (agrupado, mesclado verticalmente)
+//   Col B  = Nome do pacote de trabalho
+//   Col C  = Descrição / FVs
+//   Cols D+ = Unidades ordenadas: 1A,1B,1C,1D, 2A,2B,...  NpavCiclo
+//
+//   Linha 1 = Título
+//   Linha 2 = PAV label (1,1,1,1, 2,2,...)
+//   Linha 3 = CICLO label (A,B,C,D, A,B,...)
+//   Linha 4+ = Um par de linhas por pacote:
+//               linha par   = ATIVIDADE  → data planejada, cor do macrofluxo
+//               linha ímpar = FVs        → data planejada FVs, verde escuro
+//
+// A cor de cada célula de dado = cor do macrofluxo do pacote
 // ================================================================
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { PACOTES_BASE, MACROFLUXOS } from '../../data/pacotes';
 
-const STATUS_LABEL = {
-  'nao-iniciada': 'NÃO INICIADA',
-  'em-andamento': 'EM ANDAMENTO',
-  'concluida':    'CONCLUÍDA',
-  'atrasada':     'EM ATRASO',
-  'dente':        'DENTE',
+// ── Cor ARGB por código de macrofluxo (igual ao quadro impresso) ──
+const COR_MACRO = {
+  GRA:  'FFFBBF24',  // amarelo ouro
+  ESQ:  'FFB07FEA',  // roxo
+  INST: 'FF57B87A',  // verde médio
+  HSD:  'FF57B87A',  // verde médio
+  ELE:  'FF57B87A',  // verde médio
+  DRY:  'FFF0C030',  // amarelo escuro
+  EMA:  'FFF0737A',  // salmão/rosa
+  IMP:  'FF3DAA6A',  // verde escuro
+  CER:  'FFFBBF24',  // amarelo
+  FOR:  'FFF0C030',  // amarelo escuro
+  ESQ2: 'FFB07FEA',  // roxo (portas vidro)
+  POR:  'FFB07FEA',  // roxo
+  PIN:  'FFF0737A',  // salmão
+  LOU:  'FF4AA8D8',  // azul claro
+  GAS:  'FF57B87A',  // verde
+  LAM:  'FF8FC44A',  // verde limão
+  LIM:  'FFB0B8C0',  // cinza claro
 };
 
-// Cores ARGB para xlsx (formato AARRGGBB)
-const STATUS_COR_ARGB = {
-  'nao-iniciada': 'FFE8ECF1',   // cinza claro
-  'em-andamento': 'FFFDE68A',   // amarelo
-  'concluida':    'FFBBF7D0',   // verde claro
-  'atrasada':     'FFFECACA',   // vermelho claro
-  'dente':        'FFFED7AA',   // laranja claro
-};
+function getCorMacro(codigo) {
+  return COR_MACRO[codigo] || 'FFE2E8F0';
+}
 
-// Cor de fundo do cabeçalho de cada macrofluxo
-const MACRO_COR_ARGB = {
-  EST:  'FF94A3B8',
-  GRA:  'FFFBBF24',
-  ESQ:  'FFD8B4FE',
-  INST: 'FF86EFAC',
-  HSD:  'FF86EFAC',
-  ELE:  'FF86EFAC',
-  DRY:  'FFFDE68A',
-  EMA:  'FFFCA5A5',
-  IMP:  'FF6EE7B7',
-  CER:  'FFFBBF24',
-  FOR:  'FFFDE68A',
-  POR:  'FFD8B4FE',
-  PIN:  'FFFCA5A5',
-  LOU:  'FF93C5FD',
-  GAS:  'FF86EFAC',
-  LAM:  'FFBEF264',
-  LIM:  'FFE2E8F0',
-};
+// Cor texto: escuro se fundo claro, branco se fundo escuro
+function getCorTexto(argb) {
+  // converte ARGB hex → R, G, B
+  const r = parseInt(argb.slice(2, 4), 16);
+  const g = parseInt(argb.slice(4, 6), 16);
+  const b = parseInt(argb.slice(6, 8), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.55 ? 'FF1E293B' : 'FFFFFFFF';
+}
+
+// ── Cor FVs (verde escuro fixo) ──
+const COR_FVS       = 'FF166534';
+const COR_FVS_TEXT  = 'FFFFFFFF';
+
+// ── Cor cabeçalho fixo ──
+const COR_HEADER    = 'FF1E3A5F';
+const COR_HEADER_T  = 'FFFFFFFF';
+const COR_PAV       = 'FF334155';
+const COR_CICLO     = 'FF475569';
 
 function fmtData(ds) {
   if (!ds) return '';
   const [y, m, d] = ds.split('-');
-  return `${d}/${m}/${y}`;
+  return `${d}/${m}`;   // formato compacto DD/MM para caber na célula
 }
 
-function cellStyle(argbFill, bold = false, fontSize = 9, wrapText = false, horizontal = 'center') {
+function makeStyle(bgArgb, textArgb, bold = false, sz = 8, wrap = false, halign = 'center') {
   return {
-    fill: { fgColor: { argb: argbFill }, type: 'pattern', patternType: 'solid' },
-    font: { bold, sz: fontSize, color: { argb: 'FF1E293B' }, name: 'Arial' },
-    alignment: { horizontal, vertical: 'center', wrapText },
+    fill: { type: 'pattern', patternType: 'solid', fgColor: { argb: bgArgb } },
+    font: { name: 'Calibri', sz, bold, color: { argb: textArgb } },
+    alignment: { horizontal: halign, vertical: 'center', wrapText: wrap },
     border: {
       top:    { style: 'thin', color: { argb: 'FFCBD5E1' } },
       bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
@@ -65,9 +85,11 @@ function cellStyle(argbFill, bold = false, fontSize = 9, wrapText = false, horiz
   };
 }
 
-function applyStyle(ws, addr, style) {
-  if (!ws[addr]) ws[addr] = { t: 's', v: ws[addr]?.v ?? '' };
-  ws[addr].s = style;
+function setCell(ws, r, c, value, style) {
+  const addr = XLSX.utils.encode_cell({ r, c });
+  const tipo = typeof value === 'number' ? 'n' : 's';
+  ws[addr] = { t: tipo, v: value ?? '' };
+  if (style) ws[addr].s = style;
 }
 
 export default function ModalExportar({ obraAtual, obras, getEstado, unidades, pacotesFiltrados, onClose }) {
@@ -75,200 +97,179 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
   const [msg,       setMsg]       = useState('');
   const obra = obras[obraAtual] || {};
   const pacs = pacotesFiltrados || PACOTES_BASE;
-  const unis = (unidades || []).sort((a, b) => {
+
+  // Ordena unidades: pav asc, ciclo asc
+  const unis = (unidades || []).slice().sort((a, b) => {
     if (a.pav !== b.pav) return a.pav - b.pav;
     return a.ciclo.localeCompare(b.ciclo);
   });
 
-  // ── Excel modelo Porto Aruana ───────────────────────────────
+  // ── Exportar Excel ─────────────────────────────────────────
   async function exportarExcel() {
     setStatusExp('loading');
     try {
       const wb = XLSX.utils.book_new();
 
       // ══════════════════════════════════════════════════════
-      // ABA 1 — QUADRO DE PRODUTIVIDADE (layout Porto Aruana)
-      // Linhas: unidades (pav+ciclo)
-      // Colunas: pacotes de trabalho
-      // Célula: data planejada + status como cor
+      // ABA 1 — QUADRO DE PRODUTIVIDADE
       // ══════════════════════════════════════════════════════
-      const ws1 = {};
+      const ws = {};
+      const merges = [];
 
-      // ── Linha 0: Título da obra ──
-      const tituloCell = 'A1';
-      ws1[tituloCell] = { t: 's', v: `QUADRO DE PRODUTIVIDADE — ${(obra.nome || obraAtual).toUpperCase()}` };
-      ws1[tituloCell].s = {
-        fill: { fgColor: { argb: 'FF1E3A5F' }, type: 'pattern', patternType: 'solid' },
-        font: { bold: true, sz: 13, color: { argb: 'FFFFFFFF' }, name: 'Arial' },
-        alignment: { horizontal: 'center', vertical: 'center' },
-      };
+      // Colunas fixas: A=Macrofluxo, B=Pacote, C=Descrição/FVs
+      const C_MACRO = 0;
+      const C_NOME  = 1;
+      const C_DESC  = 2;
+      const C_DATA0 = 3; // primeira coluna de unidade
 
-      // ── Linha 1: Subtítulo / info ──
-      const subCell = 'A2';
-      const hoje = new Date().toLocaleDateString('pt-BR');
-      const infoTexto = `Início: ${fmtData(obra.dataInicio) || '—'}   |   Término: ${fmtData(obra.dataTermino) || '—'}   |   Gerado em: ${hoje}   |   ${unis.length} unidades · ${pacs.length} pacotes`;
-      ws1[subCell] = { t: 's', v: infoTexto };
-      ws1[subCell].s = {
-        fill: { fgColor: { argb: 'FFFB923C' }, type: 'pattern', patternType: 'solid' },
-        font: { bold: false, sz: 9, color: { argb: 'FFFFFFFF' }, name: 'Arial' },
-        alignment: { horizontal: 'left', vertical: 'center' },
-      };
+      // ── Linha 0: Título ──────────────────────────────────
+      const totalCols = C_DATA0 + unis.length;
+      setCell(ws, 0, 0,
+        `QUADRO DE PRODUTIVIDADE — ${(obra.nome || obraAtual).toUpperCase()}   |   Início: ${obra.dataInicio ? obra.dataInicio.split('-').reverse().join('/') : '—'}   |   Término: ${obra.dataTermino ? obra.dataTermino.split('-').reverse().join('/') : '—'}   |   Gerado: ${new Date().toLocaleDateString('pt-BR')}`,
+        makeStyle(COR_HEADER, COR_HEADER_T, true, 11, false, 'left')
+      );
+      merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
 
-      // ── Linha 2: Cabeçalho de macrofluxos (agrupamento) ──
-      const ROW_MACRO   = 3;  // linha Excel (1-based)
-      const ROW_PACOTE  = 4;  // linha com nome do pacote
-      const ROW_CODIGO  = 5;  // linha com código
-      const ROW_DADOS   = 6;  // linha onde começam as unidades
+      // ── Linha 1: Cabeçalhos fixos + PAV ─────────────────
+      setCell(ws, 1, C_MACRO, 'MACRO',    makeStyle(COR_HEADER, COR_HEADER_T, true, 8));
+      setCell(ws, 1, C_NOME,  'PACOTE',   makeStyle(COR_HEADER, COR_HEADER_T, true, 8));
+      setCell(ws, 1, C_DESC,  'DESCRIÇÃO',makeStyle(COR_HEADER, COR_HEADER_T, true, 8));
+      unis.forEach((u, i) => {
+        setCell(ws, 1, C_DATA0 + i, u.pav,
+          makeStyle(COR_PAV, COR_HEADER_T, true, 7));
+      });
 
-      // Coluna A = PAV, Coluna B = CICLO, colunas C em diante = pacotes
-      const COL_PAV   = 0; // índice 0 = coluna A
-      const COL_CICLO = 1; // índice 1 = coluna B
-      const COL_BASE  = 2; // índice 2 = coluna C (primeiro pacote)
+      // ── Linha 2: CICLO ───────────────────────────────────
+      setCell(ws, 2, C_MACRO, '',  makeStyle(COR_HEADER, COR_HEADER_T, false, 8));
+      setCell(ws, 2, C_NOME,  '',  makeStyle(COR_HEADER, COR_HEADER_T, false, 8));
+      setCell(ws, 2, C_DESC,  '',  makeStyle(COR_HEADER, COR_HEADER_T, false, 8));
+      unis.forEach((u, i) => {
+        setCell(ws, 2, C_DATA0 + i, u.ciclo,
+          makeStyle(COR_CICLO, COR_HEADER_T, true, 7));
+      });
 
-      // ── Cabeçalhos fixos ──
-      const h_pav   = XLSX.utils.encode_cell({ r: ROW_MACRO - 1,  c: COL_PAV   });
-      const h_ciclo = XLSX.utils.encode_cell({ r: ROW_MACRO - 1,  c: COL_CICLO });
-      ws1[h_pav]   = { t: 's', v: 'PAV' };
-      ws1[h_ciclo] = { t: 's', v: 'CICLO' };
-      ws1[h_pav].s   = cellStyle('FF1E3A5F', true, 9, false, 'center');
-      ws1[h_ciclo].s = cellStyle('FF1E3A5F', true, 9, false, 'center');
-      ws1[h_pav].s.font.color   = { argb: 'FFFFFFFF' };
-      ws1[h_ciclo].s.font.color = { argb: 'FFFFFFFF' };
+      // ── Dados: 2 linhas por pacote (atividade + FVs) ────
+      let ROW = 3;
+      let macroPrev   = null;
+      let macroRowIni = ROW;
 
-      // linha ROW_PACOTE e ROW_CODIGO para colunas A/B
-      for (const r of [ROW_PACOTE - 1, ROW_CODIGO - 1]) {
-        const ca = XLSX.utils.encode_cell({ r, c: COL_PAV });
-        const cb = XLSX.utils.encode_cell({ r, c: COL_CICLO });
-        ws1[ca] = { t: 's', v: '' };
-        ws1[cb] = { t: 's', v: '' };
-        ws1[ca].s = cellStyle('FF1E3A5F', false, 9);
-        ws1[cb].s = cellStyle('FF1E3A5F', false, 9);
+      pacs.forEach((p, pi) => {
+        const corBg   = getCorMacro(p.codigo);
+        const corTxt  = getCorTexto(corBg);
+        const macro   = MACROFLUXOS[p.codigo] || p.codigo;
+        const nomeCurto = p.pacote.replace(/^[A-Z-]+ - /, '');
+
+        // ── Linha da ATIVIDADE ──────────────────────────
+        const rAT = ROW;
+
+        // Macrofluxo: acumula para mesclar verticalmente
+        if (macro !== macroPrev) {
+          // Fecha mesclagem anterior
+          if (macroPrev !== null && rAT > macroRowIni) {
+            merges.push({ s: { r: macroRowIni, c: C_MACRO }, e: { r: rAT - 1, c: C_MACRO } });
+          }
+          macroPrev   = macro;
+          macroRowIni = rAT;
+        }
+
+        setCell(ws, rAT, C_MACRO, macro,
+          makeStyle(corBg, corTxt, true, 8, false, 'center'));
+        setCell(ws, rAT, C_NOME, nomeCurto,
+          makeStyle(corBg + 'CC', corTxt, true, 8, true, 'left'));
+        setCell(ws, rAT, C_DESC, p.descricao || '',
+          makeStyle('FFFAFAFA', 'FF374151', false, 7, true, 'left'));
+
+        unis.forEach((u, i) => {
+          const e  = getEstado(obraAtual, p.id, u.cod);
+          const dp = e.dataPlanejada;
+          const st = e.status || 'nao-iniciada';
+
+          // Cor da célula: se concluída fica mais escura, se atrasada vermelho
+          let bg = corBg;
+          if (st === 'concluida')    bg = 'FF16A34A';
+          else if (st === 'atrasada')bg = 'FFDC2626';
+          else if (st === 'dente')   bg = 'FFEA580C';
+          else if (st === 'em-andamento') bg = 'FFF59E0B';
+          // se não iniciada: cor padrão do macrofluxo
+
+          const txt = getCorTexto(bg);
+          setCell(ws, rAT, C_DATA0 + i, fmtData(dp),
+            makeStyle(bg, txt, false, 7));
+        });
+
+        // ── Linha das FVs ──────────────────────────────
+        if (p.temFvs) {
+          const rFV = ROW + 1;
+          setCell(ws, rFV, C_MACRO, '',
+            makeStyle(COR_FVS, COR_FVS_TEXT, false, 7));
+          setCell(ws, rFV, C_NOME, `FVs ${p.codigo}`,
+            makeStyle(COR_FVS, COR_FVS_TEXT, false, 7, false, 'left'));
+          setCell(ws, rFV, C_DESC, p.fvsDesc || 'Ficha de Verificação',
+            makeStyle('FFF0FDF4', 'FF166534', false, 7, false, 'left'));
+
+          unis.forEach((u, i) => {
+            const ef  = getEstado(obraAtual, p.id + '_FVS', u.cod);
+            const dpf = ef.dataPlanejada;
+            const stf = ef.fvsStatus || 'nao-iniciada';
+            const bg  = stf === 'concluida' ? 'FF22C55E' : COR_FVS;
+            const txt = COR_FVS_TEXT;
+            setCell(ws, rFV, C_DATA0 + i, fmtData(dpf),
+              makeStyle(bg, txt, false, 7));
+          });
+          ROW += 2;
+        } else {
+          ROW += 1;
+        }
+      });
+
+      // Fecha última mesclagem de macrofluxo
+      if (macroPrev !== null) {
+        merges.push({ s: { r: macroRowIni, c: C_MACRO }, e: { r: ROW - 1, c: C_MACRO } });
       }
 
-      // ── Cabeçalhos dos pacotes (linhas 3, 4, 5) ──
-      pacs.forEach((p, ci) => {
-        const col    = COL_BASE + ci;
-        const macro  = MACROFLUXOS[p.codigo] || p.codigo;
-        const corMac = MACRO_COR_ARGB[p.codigo] || 'FFE2E8F0';
+      // ── Linha de totais finais ──────────────────────────
+      const rTOT = ROW;
+      setCell(ws, rTOT, C_MACRO, 'TOTAL', makeStyle(COR_HEADER, COR_HEADER_T, true, 8));
+      setCell(ws, rTOT, C_NOME,  '',      makeStyle(COR_HEADER, COR_HEADER_T, true, 8));
+      setCell(ws, rTOT, C_DESC,  '',      makeStyle(COR_HEADER, COR_HEADER_T, true, 8));
+      merges.push({ s: { r: rTOT, c: C_MACRO }, e: { r: rTOT, c: C_DESC } });
 
-        // Linha 3 — Macrofluxo
-        const addrM = XLSX.utils.encode_cell({ r: ROW_MACRO - 1, c: col });
-        ws1[addrM]   = { t: 's', v: macro };
-        ws1[addrM].s = cellStyle(corMac, true, 8, false, 'center');
-
-        // Linha 4 — Nome do pacote (abreviado, sem prefixo)
-        const nomeCurto = p.pacote.replace(/^[A-Z-]+ - /, '');
-        const addrP = XLSX.utils.encode_cell({ r: ROW_PACOTE - 1, c: col });
-        ws1[addrP]   = { t: 's', v: nomeCurto };
-        ws1[addrP].s = cellStyle(corMac + '88', true, 8, true, 'center');
-
-        // Linha 5 — Código
-        const addrC = XLSX.utils.encode_cell({ r: ROW_CODIGO - 1, c: col });
-        ws1[addrC]   = { t: 's', v: p.codigo };
-        ws1[addrC].s = cellStyle(corMac, true, 8, false, 'center');
-      });
-
-      // ── Dados: uma linha por unidade ──
-      unis.forEach((u, ri) => {
-        const row = ROW_DADOS - 1 + ri; // índice 0-based
-
-        // Coluna PAV
-        const addrPav = XLSX.utils.encode_cell({ r: row, c: COL_PAV });
-        ws1[addrPav] = { t: 'n', v: u.pav };
-        ws1[addrPav].s = cellStyle(
-          ri % 2 === 0 ? 'FFF8FAFC' : 'FFEFF6FF',
-          true, 9, false, 'center'
-        );
-
-        // Coluna CICLO
-        const addrCiclo = XLSX.utils.encode_cell({ r: row, c: COL_CICLO });
-        ws1[addrCiclo] = { t: 's', v: u.ciclo };
-        ws1[addrCiclo].s = cellStyle(
-          ri % 2 === 0 ? 'FFF8FAFC' : 'FFEFF6FF',
-          true, 9, false, 'center'
-        );
-
-        // Colunas dos pacotes
-        pacs.forEach((p, ci) => {
-          const col  = COL_BASE + ci;
-          const e    = getEstado(obraAtual, p.id, u.cod);
-          const st   = e.status || 'nao-iniciada';
-          const dp   = e.dataPlanejada;
-          const dr   = e.dataReprogramada;
-          const dr_  = dr && dr !== dp ? dr : null;
-          const dataExib = dp ? fmtData(dp) : '';
-          const dataRep  = dr_ ? ` (R: ${fmtData(dr_)})` : '';
-
-          const addr = XLSX.utils.encode_cell({ r: row, c: col });
-          ws1[addr] = { t: 's', v: dataExib + dataRep };
-          ws1[addr].s = cellStyle(
-            STATUS_COR_ARGB[st] || STATUS_COR_ARGB['nao-iniciada'],
-            st === 'concluida',
-            8,
-            false,
-            'center'
-          );
-        });
-      });
-
-      // ── Linha de totais (última linha) ──
-      const rowTotais = ROW_DADOS - 1 + unis.length;
-      const lbPav = XLSX.utils.encode_cell({ r: rowTotais, c: COL_PAV });
-      ws1[lbPav] = { t: 's', v: 'TOTAL' };
-      ws1[lbPav].s = cellStyle('FF1E3A5F', true, 9);
-      ws1[lbPav].s.font.color = { argb: 'FFFFFFFF' };
-
-      const lbCiclo = XLSX.utils.encode_cell({ r: rowTotais, c: COL_CICLO });
-      ws1[lbCiclo] = { t: 's', v: '' };
-      ws1[lbCiclo].s = cellStyle('FF1E3A5F', true, 9);
-
-      pacs.forEach((p, ci) => {
-        const col = COL_BASE + ci;
-        let conc = 0, total = 0;
-        unis.forEach(u => {
+      unis.forEach((u, i) => {
+        let conc = 0, tot = 0;
+        pacs.forEach(p => {
           const e = getEstado(obraAtual, p.id, u.cod);
-          total++;
-          if ((e.status || 'nao-iniciada') === 'concluida') conc++;
+          tot++;
+          if ((e.status || '') === 'concluida') conc++;
         });
-        const pct = total > 0 ? Math.round((conc / total) * 100) : 0;
-        const addr = XLSX.utils.encode_cell({ r: rowTotais, c: col });
-        ws1[addr] = { t: 's', v: `${conc}/${total} (${pct}%)` };
-        ws1[addr].s = cellStyle(
-          pct === 100 ? 'FF86EFAC' : pct >= 50 ? 'FFFDE68A' : 'FFFECACA',
-          true, 8
-        );
+        const pct = tot > 0 ? Math.round((conc / tot) * 100) : 0;
+        const bg  = pct === 100 ? 'FF16A34A' : pct >= 50 ? 'FFF59E0B' : 'FFDC2626';
+        setCell(ws, rTOT, C_DATA0 + i, `${pct}%`,
+          makeStyle(bg, 'FFFFFFFF', true, 7));
       });
 
-      // ── Refs do range ──
-      const totalRows = rowTotais + 1;
-      const totalCols = COL_BASE + pacs.length;
-      ws1['!ref'] = XLSX.utils.encode_range({ r: 0, c: 0 }, { r: totalRows, c: totalCols - 1 });
-
-      // ── Mesclagens de título/subtítulo ──
-      ws1['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },  // título
-        { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },  // subtítulo
+      // ── Range, merges, col widths, row heights ──────────
+      ws['!ref'] = XLSX.utils.encode_range({ r: 0, c: 0 }, { r: rTOT, c: totalCols - 1 });
+      ws['!merges'] = merges;
+      ws['!cols'] = [
+        { wch: 12 },   // Macrofluxo
+        { wch: 28 },   // Pacote
+        { wch: 36 },   // Descrição
+        ...unis.map(() => ({ wch: 8 })),  // Unidades (DD/MM)
       ];
-
-      // ── Larguras das colunas ──
-      ws1['!cols'] = [
-        { wch: 6  },   // PAV
-        { wch: 7  },   // CICLO
-        ...pacs.map(() => ({ wch: 14 })),  // pacotes
+      // Alturas das linhas
+      const rowHeights = [
+        { hpt: 20 },  // título
+        { hpt: 14 },  // PAV
+        { hpt: 14 },  // CICLO
       ];
+      pacs.forEach(p => {
+        rowHeights.push({ hpt: 16 });  // atividade
+        if (p.temFvs) rowHeights.push({ hpt: 12 }); // FVs
+      });
+      rowHeights.push({ hpt: 16 }); // totais
+      ws['!rows'] = rowHeights;
 
-      // ── Alturas das linhas de cabeçalho ──
-      ws1['!rows'] = [
-        { hpt: 24 },  // título
-        { hpt: 14 },  // subtítulo
-        { hpt: 16 },  // macrofluxo
-        { hpt: 28 },  // nome pacote (wrap)
-        { hpt: 14 },  // código
-        ...unis.map(() => ({ hpt: 14 })),
-        { hpt: 16 },  // totais
-      ];
-
-      XLSX.utils.book_append_sheet(wb, ws1, 'Quadro de Produtividade');
+      XLSX.utils.book_append_sheet(wb, ws, 'Quadro de Produtividade');
 
       // ══════════════════════════════════════════════════════
       // ABA 2 — RESUMO POR PACOTE
@@ -276,10 +277,7 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
       const ws2 = {};
       const cab2 = ['Código', 'Macrofluxo', 'Pacote de Trabalho', 'Total', 'Concluídas', 'Em Andamento', 'Em Atraso', 'Não Iniciadas', 'Dentes', '% Concluído'];
       cab2.forEach((v, c) => {
-        const addr = XLSX.utils.encode_cell({ r: 0, c });
-        ws2[addr] = { t: 's', v };
-        ws2[addr].s = cellStyle('FF1E3A5F', true, 9);
-        ws2[addr].s.font.color = { argb: 'FFFFFFFF' };
+        setCell(ws2, 0, c, v, makeStyle(COR_HEADER, COR_HEADER_T, true, 9));
       });
 
       pacs.forEach((p, ri) => {
@@ -288,21 +286,23 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
           const e = getEstado(obraAtual, p.id, u.cod);
           total++;
           const st = e.status || 'nao-iniciada';
-          if (st === 'concluida')    conc++;
+          if (st === 'concluida')         conc++;
           else if (st === 'em-andamento') and++;
           else if (st === 'atrasada')     atr++;
           else if (st === 'dente')        den++;
           else                            ni++;
         });
-        const pct  = total > 0 ? Math.round((conc / total) * 100) : 0;
-        const bgRow = ri % 2 === 0 ? 'FFFAFAFA' : 'FFFFFFFF';
-        const row   = ri + 1;
-        const vals  = [p.codigo, MACROFLUXOS[p.codigo] || p.codigo, p.pacote, total, conc, and, atr, ni, den, `${pct}%`];
+        const pct    = total > 0 ? Math.round((conc / total) * 100) : 0;
+        const bgRow  = ri % 2 === 0 ? 'FFFAFAFA' : 'FFFFFFFF';
+        const bgConc = conc === total ? 'FFD1FAE5' : bgRow;
+        const bgAtr  = atr > 0       ? 'FFFEE2E2' : bgRow;
+        const row    = ri + 1;
+        const vals   = [p.codigo, MACROFLUXOS[p.codigo] || p.codigo, p.pacote, total, conc, and, atr, ni, den, `${pct}%`];
         vals.forEach((v, c) => {
-          const addr = XLSX.utils.encode_cell({ r: row, c });
-          ws2[addr] = { t: typeof v === 'number' ? 'n' : 's', v };
-          const bg  = c === 4 ? (conc === total ? 'FF86EFAC' : bgRow) : c === 6 ? (atr > 0 ? 'FFFECACA' : bgRow) : bgRow;
-          ws2[addr].s = cellStyle(bg, false, 9, false, c < 3 ? 'left' : 'center');
+          const bg = c === 4 ? bgConc : c === 6 ? bgAtr : bgRow;
+          const bold = c === 9;
+          const halign = c < 3 ? 'left' : 'center';
+          setCell(ws2, row, c, v, makeStyle(bg, 'FF1E293B', bold, 9, false, halign));
         });
       });
 
@@ -310,56 +310,20 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
       ws2['!cols'] = [{ wch: 7 }, { wch: 16 }, { wch: 46 }, { wch: 7 }, { wch: 11 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 8 }, { wch: 12 }];
       XLSX.utils.book_append_sheet(wb, ws2, 'Resumo por Pacote');
 
-      // ══════════════════════════════════════════════════════
-      // ABA 3 — CRONOGRAMA (pacote × unidade com datas)
-      // ══════════════════════════════════════════════════════
-      const ws3 = {};
-
-      // Cabeçalho: Pacote | unidade1 | unidade2 | ...
-      const cab3h = ['Pacote de Trabalho', ...unis.map(u => u.cod)];
-      cab3h.forEach((v, c) => {
-        const addr = XLSX.utils.encode_cell({ r: 0, c });
-        ws3[addr] = { t: 's', v };
-        ws3[addr].s = cellStyle(c === 0 ? 'FF1E3A5F' : 'FF1E3A5F', true, 9);
-        ws3[addr].s.font.color = { argb: 'FFFFFFFF' };
-      });
-
-      pacs.forEach((p, ri) => {
-        const row    = ri + 1;
-        const bgBase = ri % 2 === 0 ? 'FFFAFAFA' : 'FFFFFFFF';
-        // Coluna 0 = nome pacote
-        const addrP = XLSX.utils.encode_cell({ r: row, c: 0 });
-        ws3[addrP]   = { t: 's', v: p.pacote };
-        ws3[addrP].s = cellStyle(MACRO_COR_ARGB[p.codigo] || 'FFE2E8F0', true, 9, false, 'left');
-
-        unis.forEach((u, ci) => {
-          const e    = getEstado(obraAtual, p.id, u.cod);
-          const st   = e.status || 'nao-iniciada';
-          const dp   = e.dataPlanejada ? fmtData(e.dataPlanejada) : '';
-          const addr = XLSX.utils.encode_cell({ r: row, c: ci + 1 });
-          ws3[addr] = { t: 's', v: dp };
-          ws3[addr].s = cellStyle(STATUS_COR_ARGB[st] || bgBase, st === 'concluida', 8, false, 'center');
-        });
-      });
-
-      ws3['!ref']  = XLSX.utils.encode_range({ r: 0, c: 0 }, { r: pacs.length, c: unis.length });
-      ws3['!cols'] = [{ wch: 46 }, ...unis.map(() => ({ wch: 8 }))];
-      XLSX.utils.book_append_sheet(wb, ws3, 'Cronograma');
-
-      // ── Salvar arquivo ──
-      const dataNome = new Date().toISOString().slice(0, 10);
-      const nomeArq  = `Quadro-de-Produtividade-${(obra.nome || obraAtual).replace(/\s+/g, '-')}-${dataNome}.xlsx`;
+      // ── Salvar arquivo ──────────────────────────────────
+      const dataHoje = new Date().toISOString().slice(0, 10);
+      const nomeArq  = `Quadro-de-Produtividade-${(obra.nome || obraAtual).replace(/\s+/g, '-')}-${dataHoje}.xlsx`;
       XLSX.writeFile(wb, nomeArq);
-      setMsg(`✅ "${nomeArq}" baixado com sucesso!`);
+      setMsg(`✅ "${nomeArq}" gerado com sucesso!`);
       setStatusExp('ok');
     } catch (err) {
-      setMsg('❌ Erro ao gerar: ' + err.message);
+      setMsg('❌ Erro: ' + err.message);
       setStatusExp('erro');
       console.error(err);
     }
   }
 
-  // ── PDF — relatório resumido ───────────────────────────────
+  // ── PDF impressão ──────────────────────────────────────────
   function exportarPDF() {
     const hj = new Date().toLocaleDateString('pt-BR', { dateStyle: 'long' });
     let totalGeral = 0, concGeral = 0, atrGeral = 0;
@@ -372,84 +336,78 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
     }));
     const pctGeral = totalGeral > 0 ? Math.round((concGeral / totalGeral) * 100) : 0;
 
-    const linhasPacote = pacs.map(p => {
-      let conc = 0, and = 0, atr = 0, ni = 0, total = 0;
-      unis.forEach(u => {
-        const e = getEstado(obraAtual, p.id, u.cod);
-        total++;
+    // Cores CSS (mesmo mapeamento do Excel)
+    const COR_CSS = {
+      GRA:'#fbbf24', ESQ:'#b07fea', INST:'#57b87a', HSD:'#57b87a', ELE:'#57b87a',
+      DRY:'#f0c030', EMA:'#f0737a', IMP:'#3daa6a', CER:'#f6b84b', FOR:'#f0c030',
+      POR:'#b07fea', PIN:'#f0737a', LOU:'#4aa8d8', GAS:'#57b87a', LAM:'#8fc44a', LIM:'#b0b8c0',
+    };
+
+    // Monta as linhas do quadro matricial (pacote × unidade)
+    const colsUni = unis.map(u => `<th style="min-width:28px;padding:1px 2px;font-size:7px;border:1px solid #cbd5e1;background:#334155;color:#fff;writing-mode:vertical-rl;transform:rotate(180deg);height:48px">${u.pav}${u.ciclo}</th>`).join('');
+
+    const linhasPacotes = pacs.map(p => {
+      const cor = COR_CSS[p.codigo] || '#e2e8f0';
+      const nomeCurto = p.pacote.replace(/^[A-Z-]+ - /, '');
+      const cellsAT = unis.map(u => {
+        const e  = getEstado(obraAtual, p.id, u.cod);
+        const dp = e.dataPlanejada;
         const st = e.status || 'nao-iniciada';
-        if (st === 'concluida')    conc++;
-        else if (st === 'em-andamento') and++;
-        else if (st === 'atrasada')     atr++;
-        else ni++;
-      });
-      const pct    = total > 0 ? Math.round((conc / total) * 100) : 0;
-      const barCor = pct === 100 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626';
-      return `
-        <tr>
-          <td style="padding:5px 8px;border:1px solid #dde4ec;font-size:10px;font-weight:700;color:#1e3a5f;white-space:nowrap">${p.codigo}</td>
-          <td style="padding:5px 8px;border:1px solid #dde4ec;font-size:10px">${p.pacote.replace(/^[A-Z-]+ - /, '')}</td>
-          <td style="padding:5px 8px;border:1px solid #dde4ec;font-size:10px;text-align:center">${total}</td>
-          <td style="padding:5px 8px;border:1px solid #dde4ec;font-size:10px;text-align:center;color:#16a34a;font-weight:700">${conc}</td>
-          <td style="padding:5px 8px;border:1px solid #dde4ec;font-size:10px;text-align:center;color:#d97706">${and}</td>
-          <td style="padding:5px 8px;border:1px solid #dde4ec;font-size:10px;text-align:center;color:#dc2626">${atr}</td>
-          <td style="padding:5px 8px;border:1px solid #dde4ec;font-size:10px;text-align:center;color:#475569">${ni}</td>
-          <td style="padding:5px 8px;border:1px solid #dde4ec;font-size:10px;text-align:center">
-            <div style="display:flex;align-items:center;gap:6px">
-              <div style="flex:1;height:6px;background:#e2e8f0;border-radius:3px">
-                <div style="height:6px;width:${pct}%;background:${barCor};border-radius:3px"></div>
-              </div>
-              <span style="font-weight:700;color:${barCor};min-width:32px">${pct}%</span>
-            </div>
-          </td>
-        </tr>`;
+        let bg = cor;
+        if (st === 'concluida')         bg = '#16a34a';
+        else if (st === 'atrasada')     bg = '#dc2626';
+        else if (st === 'em-andamento') bg = '#f59e0b';
+        else if (st === 'dente')        bg = '#ea580c';
+        const data = dp ? `${dp.slice(8)}/${dp.slice(5,7)}` : '';
+        return `<td style="min-width:28px;padding:1px 2px;font-size:6px;border:1px solid rgba(0,0,0,.1);background:${bg};color:#fff;text-align:center;white-space:nowrap">${data}</td>`;
+      }).join('');
+
+      return `<tr>
+        <td style="padding:2px 5px;font-size:8px;font-weight:700;white-space:nowrap;background:${cor};color:#fff;border:1px solid rgba(0,0,0,.15)">${p.codigo}</td>
+        <td style="padding:2px 5px;font-size:8px;border:1px solid #e2e8f0;min-width:120px">${nomeCurto}</td>
+        ${cellsAT}
+      </tr>`;
     }).join('');
 
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>Quadro de Produtividade — ${obra.nome || obraAtual}</title>
 <style>
-  @page { size: A3 landscape; margin: 12mm; }
-  body { font-family: Arial,sans-serif; font-size:10px; color:#1e293b; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  h1 { font-size:16px; color:#1e3a5f; margin:0 0 4px 0; }
-  .sub { font-size:11px; color:#64748b; margin-bottom:16px; }
-  table { border-collapse:collapse; width:100%; }
-  thead th { background:#1e3a5f; color:#fff; padding:6px 8px; font-size:10px; text-align:left; border:1px solid #1e3a5f; }
-  .kpis { display:flex; gap:12px; margin-bottom:16px; }
-  .kpi { flex:1; border:1px solid #dde4ec; border-radius:6px; padding:8px 12px; text-align:center; }
-  .kpi-val { font-size:20px; font-weight:800; }
-  .kpi-lbl { font-size:9px; text-transform:uppercase; color:#64748b; font-weight:700; margin-top:2px; letter-spacing:.5px; }
+  @page { size: A3 landscape; margin: 8mm; }
+  body { font-family: Arial,sans-serif; font-size:9px; color:#1e293b; -webkit-print-color-adjust:exact; print-color-adjust:exact; margin:0; padding:0; }
+  h1 { font-size:13px; color:#1e3a5f; margin:0 0 2px 0; }
+  .sub { font-size:9px; color:#64748b; margin-bottom:8px; }
+  .kpis { display:flex; gap:8px; margin-bottom:8px; }
+  .kpi { border:1px solid #dde4ec; border-radius:4px; padding:5px 10px; text-align:center; flex:1; }
+  .kpi-val { font-size:16px; font-weight:800; }
+  .kpi-lbl { font-size:8px; text-transform:uppercase; color:#64748b; font-weight:700; }
+  table { border-collapse:collapse; }
+  @media print { .no-print { display:none; } }
 </style></head><body>
-<h1>📋 Quadro de Produtividade — ${obra.nome || obraAtual}</h1>
-<div class="sub">Início: <strong>${fmtData(obra.dataInicio) || '—'}</strong> &nbsp;|&nbsp;
-  Término: <strong>${fmtData(obra.dataTermino) || '—'}</strong> &nbsp;|&nbsp;
-  Gerado: <strong>${hj}</strong></div>
+<h1>QUADRO DE PRODUTIVIDADE — ${(obra.nome || obraAtual).toUpperCase()}</h1>
+<div class="sub">Início: <strong>${obra.dataInicio ? obra.dataInicio.split('-').reverse().join('/') : '—'}</strong> &nbsp;|&nbsp; Término: <strong>${obra.dataTermino ? obra.dataTermino.split('-').reverse().join('/') : '—'}</strong> &nbsp;|&nbsp; Gerado: <strong>${hj}</strong> &nbsp;|&nbsp; ${unis.length} unidades · ${pacs.length} pacotes</div>
 <div class="kpis">
-  <div class="kpi"><div class="kpi-val" style="color:#1d4ed8">${totalGeral}</div><div class="kpi-lbl">Total Metas</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#1d4ed8">${totalGeral}</div><div class="kpi-lbl">Total</div></div>
   <div class="kpi"><div class="kpi-val" style="color:#16a34a">${concGeral}</div><div class="kpi-lbl">Concluídas</div></div>
   <div class="kpi"><div class="kpi-val" style="color:#dc2626">${atrGeral}</div><div class="kpi-lbl">Em Atraso</div></div>
   <div class="kpi"><div class="kpi-val" style="color:${pctGeral>=80?'#16a34a':pctGeral>=50?'#d97706':'#dc2626'}">${pctGeral}%</div><div class="kpi-lbl">% Concluído</div></div>
-  <div class="kpi"><div class="kpi-val" style="color:#374151">${unis.length}</div><div class="kpi-lbl">Unidades</div></div>
-  <div class="kpi"><div class="kpi-val" style="color:#374151">${pacs.length}</div><div class="kpi-lbl">Pacotes</div></div>
 </div>
-<table>
+<table style="width:100%">
   <thead><tr>
-    <th>Cód.</th><th>Pacote de Trabalho</th><th>Total</th>
-    <th style="color:#86efac">Concluídas</th><th style="color:#fde68a">Em Andamento</th>
-    <th style="color:#fca5a5">Em Atraso</th><th>Não Iniciadas</th><th style="min-width:120px">% Concluído</th>
+    <th style="padding:3px 5px;font-size:8px;background:#1e3a5f;color:#fff;border:1px solid #1e3a5f;min-width:36px">Cód.</th>
+    <th style="padding:3px 5px;font-size:8px;background:#1e3a5f;color:#fff;border:1px solid #1e3a5f;min-width:120px;text-align:left">Pacote</th>
+    ${colsUni}
   </tr></thead>
-  <tbody>${linhasPacote}</tbody>
+  <tbody>${linhasPacotes}</tbody>
 </table>
-<p style="margin-top:20px;font-size:9px;color:#94a3b8">
-  Quadro de Metas · Metodologia Linha Verde · ${pacs.length} pacotes · ${unis.length} unidades · ${hj}
-</p>
+<p style="margin-top:10px;font-size:8px;color:#94a3b8">Metodologia Linha Verde · ${pacs.length} pacotes · ${unis.length} unidades · ${hj}</p>
 </body></html>`;
 
-    const w = window.open('', '_blank', 'width=1400,height=900');
+    const w = window.open('', '_blank', 'width=1600,height=1000');
     if (!w) { setMsg('⚠ Permita pop-ups neste site.'); setStatusExp('erro'); return; }
     w.document.write(html);
     w.document.close();
     w.focus();
-    setTimeout(() => w.print(), 600);
+    setTimeout(() => w.print(), 800);
     setMsg('✅ Janela de impressão aberta.');
     setStatusExp('ok');
   }
@@ -461,67 +419,62 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
       style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', backdropFilter:'blur(4px)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
 
-      <div style={{ background:'#fff', borderRadius:14, border:'1px solid #dde4ec', borderTop:'4px solid #f97316', width:'100%', maxWidth:520, boxShadow:'0 24px 80px rgba(0,0,0,.22)', overflow:'hidden' }}>
+      <div style={{ background:'#fff', borderRadius:14, border:'1px solid #dde4ec', borderTop:'4px solid #f97316', width:'100%', maxWidth:540, boxShadow:'0 24px 80px rgba(0,0,0,.22)', overflow:'hidden' }}>
 
         {/* Header */}
         <div style={{ background:'#1e3a5f', color:'#fff', padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ fontWeight:800, fontSize:15 }}>📤 Exportar Quadro</div>
+          <div style={{ fontWeight:800, fontSize:15 }}>📤 Exportar Quadro de Produtividade</div>
           <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,.7)', fontSize:18, cursor:'pointer' }}>✕</button>
         </div>
 
         <div style={{ padding:20, display:'flex', flexDirection:'column', gap:14 }}>
 
-          {/* Seletor formato */}
-          <div style={{ display:'flex', gap:1, background:'#dde4ec', borderRadius:8, overflow:'hidden' }}>
-            {[['excel','📊 Excel (.xlsx)'], ['pdf','🖨 PDF / Impressão']].map(([k, l]) => (
-              <button key={k} onClick={() => setFormato(k)}
-                style={{ flex:1, padding:'10px 0', background:formato===k?'#fff':'transparent', border:'none', cursor:'pointer', fontWeight:formato===k?700:500, color:formato===k?'#1e3a5f':'#5a6a7e', fontSize:12, transition:'all .15s' }}>
+          {/* Formato */}
+          <div style={{ display:'flex', gap:1, background:'#e2e8f0', borderRadius:8, overflow:'hidden' }}>
+            {[['excel','📊 Excel (.xlsx)'],['pdf','🖨 PDF / Impressão']].map(([k,l])=>(
+              <button key={k} onClick={()=>setFormato(k)}
+                style={{ flex:1, padding:'10px 0', background:formato===k?'#fff':'transparent', border:'none', cursor:'pointer', fontWeight:formato===k?700:500, color:formato===k?'#1e3a5f':'#5a6a7e', fontSize:12 }}>
                 {l}
               </button>
             ))}
           </div>
 
           {/* Descrição */}
-          <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:7, padding:'10px 14px', fontSize:12, color:'#92400e', lineHeight:1.6 }}>
+          <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:8, padding:'11px 14px', fontSize:12, color:'#92400e', lineHeight:1.7 }}>
             {formato === 'excel' ? (
               <>
-                <strong>3 abas no modelo Porto Aruana:</strong><br/>
-                <span>① Quadro de Produtividade — matriz unidades × pacotes com datas e cores por status</span><br/>
-                <span>② Resumo por Pacote — totais e % concluído com cores</span><br/>
-                <span>③ Cronograma — pacote × unidade com data planejada</span>
+                <strong>Layout igual ao quadro impresso da obra:</strong><br/>
+                <span>• Linhas = pacotes (Atividade + linha FVs)</span><br/>
+                <span>• Colunas = unidades (1A, 1B, 1C, 1D, 2A, 2B...)</span><br/>
+                <span>• Células = data DD/MM com cor do macrofluxo</span><br/>
+                <span>• Status: 🟢 concluída · 🔴 atrasada · 🟡 andamento · 🟠 dente</span>
               </>
             ) : (
-              'Relatório PDF com KPIs gerais e tabela de progresso por pacote. Abre janela de impressão.'
+              'Abre quadro matricial A3 paisagem para impressão física na obra. Células coloridas por macrofluxo.'
             )}
           </div>
 
-          {/* Info obra */}
-          <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:7, padding:'9px 13px', fontSize:11, color:'#5a6a7e', lineHeight:1.7 }}>
+          {/* Info */}
+          <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:7, padding:'9px 13px', fontSize:11, color:'#5a6a7e', lineHeight:1.8 }}>
             <strong style={{ color:'#1e3a5f' }}>Obra:</strong> {obra.nome || obraAtual}<br/>
             <strong style={{ color:'#1e3a5f' }}>Unidades:</strong> {unis.length} &nbsp;·&nbsp;
             <strong style={{ color:'#1e3a5f' }}>Pacotes:</strong> {pacs.length} &nbsp;·&nbsp;
-            <strong style={{ color:'#1e3a5f' }}>Início:</strong> {fmtData(obra.dataInicio) || '—'}
+            <strong style={{ color:'#1e3a5f' }}>Início:</strong> {obra.dataInicio ? obra.dataInicio.split('-').reverse().join('/') : '—'}
           </div>
 
           {/* Legenda cores */}
           {formato === 'excel' && (
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', fontSize:10, color:'#5a6a7e' }}>
-              {[
-                ['Não Iniciada', '#E8ECF1'],
-                ['Em Andamento', '#FDE68A'],
-                ['Concluída',    '#BBF7D0'],
-                ['Em Atraso',    '#FECACA'],
-                ['Dente',        '#FED7AA'],
-              ].map(([lbl, cor]) => (
-                <span key={lbl} style={{ display:'flex', alignItems:'center', gap:4 }}>
-                  <span style={{ width:12, height:12, borderRadius:2, background:cor, border:'1px solid #cbd5e1', flexShrink:0 }} />
-                  {lbl}
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', fontSize:11, color:'#374151', alignItems:'center' }}>
+              <span style={{ fontWeight:700, fontSize:10, color:'#64748b' }}>Células:</span>
+              {[['Cor macrofluxo','#57b87a'],['Concluída','#16a34a'],['Em Atraso','#dc2626'],['Em Andamento','#f59e0b'],['Dente','#ea580c']].map(([l,c])=>(
+                <span key={l} style={{ display:'flex', alignItems:'center', gap:3 }}>
+                  <span style={{ width:12, height:12, borderRadius:2, background:c, border:'1px solid #cbd5e1', flexShrink:0 }}/>
+                  <span style={{ fontSize:10 }}>{l}</span>
                 </span>
               ))}
             </div>
           )}
 
-          {/* Mensagem resultado */}
           {msg && (
             <div style={{ background:statusExp==='ok'?'#f0fdf4':'#fef2f2', border:`1px solid ${statusExp==='ok'?'#86efac':'#fca5a5'}`, borderRadius:6, padding:'9px 13px', fontSize:12, color:statusExp==='ok'?'#14532d':'#b91c1c', fontWeight:600 }}>
               {msg}
@@ -535,7 +488,7 @@ export default function ModalExportar({ obraAtual, obras, getEstado, unidades, p
           <button
             onClick={formato === 'excel' ? exportarExcel : exportarPDF}
             disabled={statusExp === 'loading'}
-            style={{ padding:'8px 22px', background:'linear-gradient(135deg, #ea580c, #f97316)', border:'none', borderRadius:7, fontSize:12, fontWeight:800, color:'#fff', cursor:'pointer', opacity:statusExp==='loading'?.6:1, boxShadow:'0 4px 12px rgba(234,88,12,.35)' }}>
+            style={{ padding:'8px 22px', background:'linear-gradient(135deg,#ea580c,#f97316)', border:'none', borderRadius:7, fontSize:12, fontWeight:800, color:'#fff', cursor:'pointer', opacity:statusExp==='loading'?.6:1, boxShadow:'0 4px 14px rgba(234,88,12,.4)' }}>
             {statusExp === 'loading' ? '⏳ Gerando...' : formato === 'excel' ? '📊 Baixar Excel' : '🖨 Gerar PDF'}
           </button>
         </div>
