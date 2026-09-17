@@ -537,3 +537,14 @@
   background: #7f1d1d;
   border: 2px dashed #ef4444;
 }
+
+/* ── Célula programada via Prog. Semanal — azul claro ─────────── */
+.cellProgramada {
+  background: #bfdbfe !important;
+  border-color: #3b82f6 !important;
+  color: #1d4ed8 !important;
+  font-weight: 800 !important;
+}
+.cellProgramada:hover {
+  background: #93c5fd !important;
+}

@@ -381,14 +381,6 @@ export default function Quadro({
           <button className={`${styles.btnConfig} ${styles.btnLaranja}`}
             title="Abrir tela de reprogramação de atividades em atraso"
             onClick={()=>setModalReprog(true)}>🔄 Reajustar Atrasos</button>
-          <button className={`${styles.btnConfig}`} style={{background:'#0f766e',color:'#fff',border:'none'}}
-            onClick={()=>setModalBaseZero(true)} title="Base Zero — snapshot imutável do planejamento inicial">
-            🎯 Base Zero
-          </button>
-          <button className={`${styles.btnConfig}`} style={{background:'#7c3aed',color:'#fff',border:'none'}}
-            onClick={()=>setModalRestricoes(true)} title="Análise de Restrições">
-            🚧 Restrições
-          </button>
           <button className={`${styles.btnConfig}`} style={{background:'#b45309',color:'#fff',border:'none'}}
             onClick={()=>setModalFeriados(true)} title="Configurar dias não trabalhados">
             📅 Feriados
@@ -399,8 +391,6 @@ export default function Quadro({
           </button>
           <button className={`${styles.btnConfig} ${styles.btnRoxo}`}
             onClick={()=>setModalExportar(true)}>📤 Exportar</button>
-          <button className={`${styles.btnConfig} ${styles.btnAzul}`}
-            onClick={()=>setModalNovaObra(true)}>+ Nova Obra</button>
         </div>
       </div>
 
@@ -414,6 +404,7 @@ export default function Quadro({
           ['Dente 🦷',     styles.corDente      ],
           ['FVs ✓',        styles.corFvs        ],
           ['🔄 Reprog.',   styles.cellReprogramada],
+          ['📅 Prog.',     styles.cellProgramada  ],
           ['⚠ GAP',        styles.cellGap       ],
         ].map(([label,cls])=>(
           <span key={label} className={styles.legendaItem}>
@@ -712,16 +703,19 @@ function LinhaQuadro({
             ? (st==='concluida' ? styles.cellFvs : styles.cellNaoIniciada)
             : (STATUS_CLASS[st]||styles.cellNaoIniciada);
 
-          // Se foi reprogramada (tem dataReprogramada diferente da dataPlanejada original)
-          const isReprog = !isFvs && e.dataReprogramada && e.dataReprogramada === col.dateStr && e.status !== 'concluida';
+          // Se foi reprogramada via ModalReprogramacao (dataReprogramada sem flag de prog. manual)
+          const isReprog = !isFvs && e.dataReprogramada && e.dataReprogramada === col.dateStr && e.status !== 'concluida' && !e.programadoManualmente;
+
+          // Programado manualmente via ProgSemanal (azul claro)
+          const isProgramado = !isFvs && e.programadoManualmente && col.dateStr === e.dataPlanejada && e.status !== 'concluida' && !isReprog;
 
           // GAP — planejado para data passada e não concluído (sem reprogramação)
-          const isGap = !isFvs && !isReprog && st === 'atrasada' && col.dateStr < hj;
+          const isGap = !isFvs && !isReprog && !isProgramado && st === 'atrasada' && col.dateStr < hj;
 
           return (
             <div key={col.dateStr}
-              className={`${styles.cell} ${isReprog ? styles.cellReprogramada : cls} ${col.isHoje?styles.cellHoje:''} ${isGap?styles.cellGap:''}`}
-              title={`${unidade.cod} | ${pacote.codigo} — ${col.dateStr}${isReprog?' 🔄 REPROGRAMADA':''}${isGap?' ⚠️ GAP — não executado no prazo':''}\nArrastar para reprogramar`}
+              className={`${styles.cell} ${isReprog ? styles.cellReprogramada : isProgramado ? styles.cellProgramada : cls} ${col.isHoje?styles.cellHoje:''} ${isGap?styles.cellGap:''}`}
+              title={`${unidade.cod} | ${pacote.codigo} — ${col.dateStr}${isReprog?' 🔄 REPROGRAMADA':''}${isProgramado?' 📅 PROGRAMADA':''}${isGap?' ⚠️ GAP — não executado no prazo':''}\nArrastar para reprogramar`}
               draggable={!isFvs}
               onDragStart={()=>!isFvs&&onDragStart?.(pacote.id,unidade.cod,col.dateStr)}
               onDragOver={e=>e.preventDefault()}
@@ -731,7 +725,7 @@ function LinhaQuadro({
                 : onClickMeta(pacote,unidade,col.dateStr,st)
               }
             >
-              <span className={styles.cellText}>{isReprog ? '🔄' : isGap ? '⚠' : unidade.cod}</span>
+              <span className={styles.cellText}>{isReprog ? '🔄' : isGap ? '⚠' : isProgramado ? '📅' : unidade.cod}</span>
             </div>
           );
         })}

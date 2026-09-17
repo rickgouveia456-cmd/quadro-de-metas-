@@ -1,84 +1,145 @@
+/* ================================================================
+   Login — tema Laranja + Branco
+   ================================================================ */
+
 .overlay {
   position: fixed; inset: 0;
-  background: linear-gradient(135deg, #0f1f35 0%, #1e3a5f 50%, #0a1628 100%);
+  background: linear-gradient(145deg, #ea580c 0%, #f97316 40%, #fb923c 70%, #fed7aa 100%);
   display: flex; align-items: center; justify-content: center;
   z-index: 9999;
+  /* Padrão geométrico sutil */
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,.12) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255,255,255,.08) 0%, transparent 50%),
+    linear-gradient(145deg, #ea580c 0%, #f97316 40%, #fb923c 70%, #fed7aa 100%);
 }
 
 .card {
   background: #ffffff;
-  border-radius: 16px;
-  padding: 36px 40px;
-  width: 420px;
-  box-shadow: 0 24px 64px rgba(0,0,0,.4);
+  border-radius: 20px;
+  padding: 38px 44px;
+  width: 430px;
+  box-shadow:
+    0 32px 80px rgba(234, 88, 12, .35),
+    0 4px 16px rgba(0,0,0,.12);
   display: flex; flex-direction: column; gap: 0;
+  border-top: 5px solid #f97316;
 }
 
-/* Logo */
+/* ── Logo ────────────────────────────────────────────────── */
 .logo {
   display: flex; align-items: center; gap: 14px;
   margin-bottom: 28px;
-  padding-bottom: 24px;
-  border-bottom: 2px solid #f0f4f8;
+  padding-bottom: 22px;
+  border-bottom: 2px solid #ffedd5;
 }
-.logoIcon { font-size: 40px; line-height: 1; }
-.logoTexto { display: flex; flex-direction: column; gap: 3px; }
+.logoIcon { font-size: 42px; line-height: 1; }
+.logoTexto { display: flex; flex-direction: column; gap: 4px; }
 .logoNome {
-  font-size: 15px; font-weight: 900; color: #1e3a5f;
-  letter-spacing: 1px; text-transform: uppercase;
+  font-size: 15px; font-weight: 900; color: #c2410c;
+  letter-spacing: 1.2px; text-transform: uppercase;
 }
-.logoSub { font-size: 10px; color: #64748b; letter-spacing: .3px; }
+.logoSub { font-size: 10px; color: #9a3412; letter-spacing: .3px; font-weight: 500; }
 
-/* Form */
+/* ── Form ─────────────────────────────────────────────────── */
 .form { display: flex; flex-direction: column; gap: 6px; }
-.label { font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 2px; }
-
-/* Perfis */
-.perfisList {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+.label {
+  font-size: 11px; font-weight: 700; color: #9a3412;
+  text-transform: uppercase; letter-spacing: .7px; margin-bottom: 2px;
 }
+
+/* ── Perfis ───────────────────────────────────────────────── */
+.perfisList { display: flex; flex-direction: column; gap: 6px; }
+
 .perfilBtn {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px; border-radius: 8px;
-  border: 2px solid #e2e8f0; background: #f8fafc;
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; border-radius: 10px;
+  border: 2px solid #fed7aa; background: #fff7ed;
   cursor: pointer; transition: all .2s; font-size: 12px;
-  color: #374151; font-weight: 600;
+  color: #431407; font-weight: 600; width: 100%;
 }
-.perfilBtn:hover { border-color: #94a3b8; background: #f1f5f9; }
-.perfilAtivo { font-weight: 800; color: #1e293b; }
-.perfilIcon { font-size: 18px; }
-.perfilLabel { font-size: 11px; }
+.perfilBtn:hover {
+  border-color: #f97316;
+  background: #ffedd5;
+  transform: translateX(2px);
+}
+.perfilAtivo {
+  border-color: #ea580c !important;
+  background: #fff7ed !important;
+  font-weight: 800;
+  color: #9a3412;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, .15);
+}
+.perfilIcon { font-size: 20px; flex-shrink: 0; }
+.perfilLabel { font-size: 12px; }
 
-/* Input senha */
+/* ── Input senha ──────────────────────────────────────────── */
 .input {
-  padding: 11px 14px; border: 2px solid #e2e8f0; border-radius: 8px;
-  font-size: 13px; color: #0f172a; background: #f8fafc;
+  padding: 12px 14px; border: 2px solid #fed7aa; border-radius: 9px;
+  font-size: 13px; color: #431407; background: #fff7ed;
   transition: border-color .15s; outline: none; width: 100%;
+  font-family: inherit;
 }
-.input:focus { border-color: #1a56db; background: #fff; box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
+.input:focus {
+  border-color: #f97316; background: #fff;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, .18);
+}
+.input::placeholder { color: #fba76b; }
 
-/* Erro */
+/* ── Erro ─────────────────────────────────────────────────── */
 .erro {
-  background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px;
-  padding: 8px 12px; font-size: 12px; color: #b91c1c; font-weight: 600;
+  background: #fef2f2; border: 1px solid #fecaca;
+  border-radius: 7px; padding: 9px 13px;
+  font-size: 12px; color: #b91c1c; font-weight: 600;
 }
 
-/* Botão entrar */
+/* ── Botão entrar ─────────────────────────────────────────── */
 .btnEntrar {
-  margin-top: 8px; padding: 13px;
-  background: #1e3a5f; color: #fff;
-  border: none; border-radius: 8px;
-  font-size: 13px; font-weight: 800;
+  margin-top: 10px; padding: 14px;
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+  color: #fff;
+  border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 800;
   letter-spacing: .5px; transition: all .2s;
-  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  box-shadow: 0 4px 16px rgba(234, 88, 12, .45);
+  cursor: pointer;
 }
-.btnEntrar:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.btnEntrar:hover {
+  background: linear-gradient(135deg, #c2410c 0%, #ea580c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(234, 88, 12, .5);
+}
 .btnEntrar:active { transform: translateY(0); }
 .btnEntrar:disabled { opacity: .65; cursor: not-allowed; transform: none; }
 
-/* Footer */
+/* ── Footer ───────────────────────────────────────────────── */
 .footer {
   margin-top: 20px; text-align: center;
-  font-size: 10px; color: #94a3b8; padding-top: 16px;
-  border-top: 1px solid #f0f4f8;
+  font-size: 10px; color: #fdba74;
+  padding-top: 16px;
+  border-top: 1px solid #ffedd5;
+}
+
+/* ── Label row + Ver permissões ───────────────────────────── */
+.labelRow {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 2px;
+}
+.btnVerPerms {
+  background: none; border: none; cursor: pointer;
+  font-size: 10px; color: #ea580c; font-weight: 700;
+  padding: 0; text-decoration: underline; font-family: inherit;
+}
+.btnVerPerms:hover { color: #c2410c; }
+
+/* ── Caixa de permissões ──────────────────────────────────── */
+.permsBox {
+  margin-top: 4px; padding: 8px 10px;
+  border: 1px solid; border-radius: 8px;
+  display: flex; flex-wrap: wrap; gap: 5px;
+}
+.permTag {
+  font-size: 10px; font-weight: 600; color: #9a3412;
+  background: rgba(255,237,213,.9); border: 1px solid #fed7aa;
+  padding: 2px 7px; border-radius: 10px;
 }

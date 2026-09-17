@@ -119,8 +119,9 @@ export default function ModalProgSemanal({
       setDragging(null); setDropOver(null); return;
     }
     setEstadoMeta(obraAtual, pacoteId, dragging.unidade.cod, {
-      dataPlanejada:    ds,
-      dataReprogramada: ds,
+      dataPlanejada:        ds,
+      dataReprogramada:     ds,
+      programadoManualmente: true,
     });
     showToast(`📅 ${dragging.unidade.cod} → ${ds.split('-').reverse().join('/')}`);
     setDragging(null);
