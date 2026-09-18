@@ -1,28 +1,23 @@
-FROM ubuntu:22.04
+FROM php:8.1-apache
 
-ENV DEBIAN_FRONTEND=noninteractive
+# Instala extensao mysql
+RUN docker-php-ext-install pdo_mysql mysqli
 
-RUN apt-get update && apt-get install -y \
-    apache2 \
-    php8.1 \
-    php8.1-mysql \
-    libapache2-mod-php8.1 \
-    && a2enmod rewrite \
-    && rm -rf /var/lib/apt/lists/*
+# Habilita rewrite e desativa mods conflitantes de MPM
+RUN a2enmod rewrite \
+    && a2dismod mpm_event || true \
+    && a2enmod mpm_prefork \
+    && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
-# Configura AllowOverride para .htaccess funcionar
-RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' \
-    /etc/apache2/apache2.conf
+# Remove index.html padrao do Debian/Apache
+RUN rm -f /var/www/html/index.html
 
-# Copia nossos arquivos para /var/www/html
+# Copia arquivos da API
 COPY ./api /var/www/html
 COPY ./db  /var/www/db
-
-# Remove o index.html padrao DEPOIS do COPY (garante que nao volta)
-RUN rm -f /var/www/html/index.html
 
 RUN chown -R www-data:www-data /var/www/html /var/www/db \
     && chmod -R 755 /var/www/html
 
 EXPOSE 80
-CMD ["apachectl", "-D", "FOREGROUND"]
+CMD ["apache2-foreground"]
