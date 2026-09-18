@@ -1,6 +1,0 @@
-# LF obrigatorio para arquivos do backend Docker
-backend/* text=auto eol=lf
-backend/**/*.php text eol=lf
-backend/**/*.sql text eol=lf
-backend/**/Dockerfile text eol=lf
-backend/**/.htaccess text eol=lf
