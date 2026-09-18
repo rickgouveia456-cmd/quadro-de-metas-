@@ -1,11 +1,10 @@
 {
   "build": {
-    "builder": "DOCKERFILE",
-    "dockerfilePath": "Dockerfile.backend"
+    "builder": "NIXPACKS"
   },
   "deploy": {
-    "healthcheckPath": "/api/health",
-    "healthcheckTimeout": 60,
-    "restartPolicyType": "ON_FAILURE"
+    "startCommand": "npx serve dist -l 0.0.0.0:$PORT",
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 30
   }
 }
