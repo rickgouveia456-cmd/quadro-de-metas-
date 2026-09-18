@@ -17,8 +17,8 @@ function initDb(): array {
     }
 
     // Lê e executa schema.sql
-    $schemaFile = '/var/www/db/schema.sql';
-    $seedFile   = '/var/www/db/seed.sql';
+    $schemaFile = '/var/www/html/schema.sql';
+    $seedFile   = '/var/www/html/seed.sql';
 
     if (!file_exists($schemaFile)) {
         return ['ok' => false, 'msg' => 'schema.sql não encontrado.'];
