@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+  # ── MariaDB ────────────────────────────────────────────────
+  db:
+    image: mariadb:11
+    container_name: quadro_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret}
+      MYSQL_DATABASE:      ${DB_NAME:-quadro_metas}
+      MYSQL_USER:          ${DB_USER:-quadro}
+      MYSQL_PASSWORD:      ${DB_PASSWORD:-quadro_pass}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── PHP + Apache ───────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quadro_api
+    restart: unless-stopped
+    environment:
+      DB_HOST:     db
+      DB_NAME:     ${DB_NAME:-quadro_metas}
+      DB_USER:     ${DB_USER:-quadro}
+      DB_PASSWORD: ${DB_PASSWORD:-quadro_pass}
+      APP_ENV:     ${APP_ENV:-production}
+      APP_SECRET:  ${APP_SECRET:-change_me_in_production}
+    volumes:
+      - ./api:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+
+  # ── phpMyAdmin (dev only) ──────────────────────────────────
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: quadro_pma
+    restart: unless-stopped
+    environment:
+      PMA_HOST:     db
+      PMA_USER:     ${DB_USER:-quadro}
+      PMA_PASSWORD: ${DB_PASSWORD:-quadro_pass}
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+    profiles:
+      - dev   # só sobe com: docker compose --profile dev up
+
+volumes:
+  db_data:
