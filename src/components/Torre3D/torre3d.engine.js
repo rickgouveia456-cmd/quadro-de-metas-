@@ -74,9 +74,6 @@ export function buildTorre3D({ wrapper, canvas, pavimentos, ciclos=CICLOS_DEF, o
   scene.background=new THREE.Color(0xb8d4e8);
   scene.fog=new THREE.Fog(0xb8d4e8, 250, 500);
 
-  // ResizeObserver — declarado antes do dispose para acesso correto
-  let ro = null;
-
   const W=wrapper.clientWidth||window.innerWidth||800;
   const H=wrapper.clientHeight||window.innerHeight||600;
   camera=new THREE.PerspectiveCamera(35,W/H,0.5,600);
@@ -90,9 +87,8 @@ export function buildTorre3D({ wrapper, canvas, pavimentos, ciclos=CICLOS_DEF, o
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.1;
 
-  // ResizeObserver — detecta quando o wrapper ganha tamanho real
-  ro = new ResizeObserver(() => onResize());
-  ro.observe(wrapper);
+  // Força tamanho correto após render inicial (canvas pode ter 0 no mount)
+  setTimeout(() => onResize(), 100);
 
   // ── Luzes ─────────────────────────────────────────────────────
   scene.add(new THREE.AmbientLight(0xffffff,0.75));
@@ -639,7 +635,6 @@ export function buildTorre3D({ wrapper, canvas, pavimentos, ciclos=CICLOS_DEF, o
     rotateRight(){ orbitTgt.theta+=0.35; },
     dispose(){
       cancelAnimationFrame(rafId);
-      ro.disconnect();
       canvas.removeEventListener('mousemove',onMM);
       canvas.removeEventListener('click',onClick);
       window.removeEventListener('resize',onResize);
