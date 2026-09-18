@@ -768,7 +768,7 @@ function ModalMeta({ pacote, unidade, dateStr, status, getEstado, obraAtual, onM
           {/* Info */}
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:7,padding:10,fontSize:12}}>
             <div style={{fontWeight:700,color:'#1e3a5f',marginBottom:3}}>{pacote.pacote}</div>
-            <div style={{color:'#64748b'}}>Pav. {unidade.pav} · {unidade.ciclo ? `APS 4 (Ciclo ${unidade.ciclo})` : 'Térreo'} · Data: {dateStr}</div>
+            <div style={{color:'#64748b'}}>Pav. {unidade.pav} · {unidade.ciclo ? 'APS 4' : 'Térreo'} · Data: {dateStr}</div>
             <div style={{marginTop:4,display:'inline-block',padding:'2px 8px',borderRadius:10,fontSize:11,fontWeight:700,background:COR[status]||'#f1f5f9',color:COR_T[status]||'#374151'}}>
               {STATUS_LABELS[status]||status}
             </div>
