@@ -84,22 +84,24 @@ export function gerarUnidades(obra, tipologias) {
   const unidades = [];
 
   for (let p = 0; p < totalPav; p++) {
-    // Ultimo pavimento é cobertura — pula
+    // Último pavimento é cobertura — pula
     if (p === totalPav - 1) continue;
 
-    // Pavimento 0 = Térreo (T), demais = número
-    const codPav = p === 0 ? 'T' : String(p);
-    const numPav = p === 0 ? 'T' : p;
-
-    ciclos.forEach(ciclo => {
-      unidades.push({
-        pav:   numPav,
-        ciclo,
-        cod:   `${codPav}${ciclo}`,   // TA, TB, TC, TD, 1A, 1B... 17D
-        label: `${codPav} · Ciclo ${ciclo} (4 aptos)`,
-        tipo:  'Takt 4',
+    if (p === 0) {
+      // Térreo = 1 unidade só, código "T"
+      unidades.push({ pav: 'T', ciclo: '', cod: 'T', label: 'Térreo', tipo: 'Takt 4' });
+    } else {
+      // Demais pavimentos = 4 ciclos (A,B,C,D) = takt 4
+      ciclos.forEach(ciclo => {
+        unidades.push({
+          pav:   p,
+          ciclo,
+          cod:   `${p}${ciclo}`,   // 1A, 1B, 1C, 1D, 2A...
+          label: `Pav. ${p} · Ciclo ${ciclo} (4 aptos)`,
+          tipo:  'Takt 4',
+        });
       });
-    });
+    }
   }
   return unidades;
 }
