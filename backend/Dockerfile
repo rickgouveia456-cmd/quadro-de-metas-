@@ -1,15 +1,14 @@
 FROM php:8.1-fpm-alpine
 
-ARG CACHEBUST=40
+# Cache bust com timestamp - forca rebuild completo
+ARG CACHEBUST=20260918130000
 
-# Dependencias de compilacao para extensoes PHP
-RUN apk add --no-cache \
-    nginx \
-    build-base \
-    autoconf \
-    linux-headers
+# PRIMEIRO copia os arquivos (invalida o cache do contexto)
+COPY ./api /var/www/html
 
-# Instala extensoes PHP separadamente
+# Depois instala dependencias
+RUN apk add --no-cache nginx build-base autoconf linux-headers
+
 RUN docker-php-ext-install pdo pdo_mysql mysqli
 
 # Config Nginx
@@ -30,7 +29,6 @@ server {\n\
     }\n\
 }\n' > /etc/nginx/http.d/default.conf
 
-COPY ./api /var/www/html
 RUN rm -f /var/www/html/index.html \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
