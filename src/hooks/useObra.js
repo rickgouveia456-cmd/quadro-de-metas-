@@ -41,9 +41,10 @@ function lerLS(chave, fallback) {
 function initObras() {
   const salvo = lerLS(LS_OBRAS, null);
   if (!salvo) return { ...OBRAS_PADRAO };
-  // Mescla com OBRAS_PADRAO para garantir campos novos
+  // Mescla TODAS as obras salvas (incluindo customizadas) com os padrões
+  const todasChaves = new Set([...Object.keys(OBRAS_PADRAO), ...Object.keys(salvo)]);
   return Object.fromEntries(
-    Object.keys(OBRAS_PADRAO).map(k => [k, { ...OBRAS_PADRAO[k], ...(salvo[k] || {}) }])
+    [...todasChaves].map(k => [k, { ...(OBRAS_PADRAO[k] || {}), ...(salvo[k] || {}) }])
   );
 }
 
@@ -81,21 +82,51 @@ export function useObra() {
   const [restricoes, setRestricoes] = useState(initRestricoes);
   const [obraAtual,  setObraAtual]  = useState('TC');
 
-  // ── Persistência com debounce para evitar excesso de gravações ─
-  const debounceRef = useRef({});
+  // ── Persistência: imediata + flush garantido no F5/fechar ─────
+  // Refs para acesso síncrono no beforeunload (sem closure stale)
+  const estadoRef     = useRef(estado);
+  const obrasRef      = useRef(obras);
+  const tipologiasRef = useRef(tipologias);
+  const feriadosRef   = useRef(feriadosCustom);
+  const restricoesRef = useRef(restricoes);
 
-  function salvarComDebounce(chave, valor, delay = 300) {
-    clearTimeout(debounceRef.current[chave]);
-    debounceRef.current[chave] = setTimeout(() => {
-      try { localStorage.setItem(chave, JSON.stringify(valor)); } catch {}
-    }, delay);
-  }
+  useEffect(() => { estadoRef.current     = estado;       }, [estado]);
+  useEffect(() => { obrasRef.current      = obras;        }, [obras]);
+  useEffect(() => { tipologiasRef.current = tipologias;   }, [tipologias]);
+  useEffect(() => { feriadosRef.current   = feriadosCustom; }, [feriadosCustom]);
+  useEffect(() => { restricoesRef.current = restricoes;   }, [restricoes]);
 
-  useEffect(() => { salvarComDebounce(LS_OBRAS,      obras);      }, [obras]);
-  useEffect(() => { salvarComDebounce(LS_TIPOLOGIAS, tipologias); }, [tipologias]);
-  useEffect(() => { salvarComDebounce(LS_ESTADO,     estado, 150);}, [estado]);
-  useEffect(() => { salvarComDebounce(LS_FERIADOS,   feriadosCustom); }, [feriadosCustom]);
-  useEffect(() => { salvarComDebounce(LS_RESTRICOES, restricoes); }, [restricoes]);
+  // Salva imediatamente a cada mudança
+  useEffect(() => {
+    try { localStorage.setItem(LS_ESTADO,     JSON.stringify(estado));      } catch {}
+  }, [estado]);
+  useEffect(() => {
+    try { localStorage.setItem(LS_OBRAS,      JSON.stringify(obras));       } catch {}
+  }, [obras]);
+  useEffect(() => {
+    try { localStorage.setItem(LS_TIPOLOGIAS, JSON.stringify(tipologias));  } catch {}
+  }, [tipologias]);
+  useEffect(() => {
+    try { localStorage.setItem(LS_FERIADOS,   JSON.stringify(feriadosCustom)); } catch {}
+  }, [feriadosCustom]);
+  useEffect(() => {
+    try { localStorage.setItem(LS_RESTRICOES, JSON.stringify(restricoes));  } catch {}
+  }, [restricoes]);
+
+  // Flush síncrono no F5 / fechar aba — garante que nada se perde
+  useEffect(() => {
+    function flush() {
+      try {
+        localStorage.setItem(LS_ESTADO,     JSON.stringify(estadoRef.current));
+        localStorage.setItem(LS_OBRAS,      JSON.stringify(obrasRef.current));
+        localStorage.setItem(LS_TIPOLOGIAS, JSON.stringify(tipologiasRef.current));
+        localStorage.setItem(LS_FERIADOS,   JSON.stringify(feriadosRef.current));
+        localStorage.setItem(LS_RESTRICOES, JSON.stringify(restricoesRef.current));
+      } catch {}
+    }
+    window.addEventListener('beforeunload', flush);
+    return () => window.removeEventListener('beforeunload', flush);
+  }, []); // monta uma vez — usa refs para sempre ter dados atuais
 
   // ── getEstado ────────────────────────────────────────────────
   const getEstado = useCallback((obraId, pacoteId, unidadeCod) => {
