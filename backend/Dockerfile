@@ -1,29 +1,25 @@
-FROM php:8.3-apache
+FROM ubuntu:22.04
 
-# Corrige erro "More than one MPM loaded"
-RUN a2dismod mpm_event mpm_worker 2>/dev/null || true && \
-    a2enmod mpm_prefork
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Extensoes necessarias
-RUN docker-php-ext-install pdo pdo_mysql mysqli
+# Instala Apache + PHP sem imagem base php:apache (evita MPM conflict)
+RUN apt-get update && apt-get install -y \
+    apache2 \
+    php8.1 \
+    php8.1-mysql \
+    libapache2-mod-php8.1 \
+    && a2enmod rewrite \
+    && sed -i "s/AllowOverride None/AllowOverride All/g" /etc/apache2/apache2.conf \
+    && rm -rf /var/lib/apt/lists/*
 
-# Habilita mod_rewrite
-RUN a2enmod rewrite
-
-# Permite .htaccess
-RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
-
-# Copia API e db
+# Copia API e banco
 COPY ./api /var/www/html
 COPY ./db  /var/www/db
 
-# Corrige path do schema/seed no init_db.php
-RUN sed -i "s|__DIR__ . '/../db/|'/var/www/db/|g" /var/www/html/init_db.php
-
 # Permissoes
-RUN chown -R www-data:www-data /var/www/html /var/www/db && \
-    chmod -R 755 /var/www/html
+RUN chown -R www-data:www-data /var/www/html /var/www/db \
+    && chmod -R 755 /var/www/html
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+CMD ["apachectl", "-D", "FOREGROUND"]
