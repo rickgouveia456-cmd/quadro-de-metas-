@@ -1,120 +1,132 @@
 // ================================================================
 // useObra — estado global de obras, tipologias e metas
+//
+// PERSISTÊNCIA: usa localStorage com debounce de 300ms para evitar
+// gravações excessivas. O estado é lido UMA VEZ na inicialização
+// (função lazy do useState) e salvo a cada mudança.
+//
+// FORMATO DO ESTADO:
+//   estado = {
+//     "TC": {
+//       "TC__GRA-VAO__1A": { status, dataPlanejada, ... },
+//       ...
+//     }
+//   }
 // ================================================================
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { OBRAS_PADRAO, TIPOLOGIAS_PADRAO, FERIADOS } from '../data/pacotes';
 import { addDiasUteis, toDateStr } from '../data/datas';
 
-const LS_ESTADO      = 'quadroMetas_estado';
-const LS_OBRAS       = 'quadroMetas_obras';
-const LS_TIPOLOGIAS  = 'quadroMetas_tipologias';
-const LS_HISTORICO   = 'quadroMetas_historico';
-const LS_BASE_ZERO   = 'quadroMetas_baseZero';
-const LS_FERIADOS    = 'quadroMetas_feriados';
-const LS_RESTRICOES  = 'quadroMetas_restricoes';
-
+const LS_ESTADO     = 'quadroMetas_estado';
+const LS_OBRAS      = 'quadroMetas_obras';
+const LS_TIPOLOGIAS = 'quadroMetas_tipologias';
+const LS_HISTORICO  = 'quadroMetas_historico';
+const LS_BASE_ZERO  = 'quadroMetas_baseZero';
+const LS_FERIADOS   = 'quadroMetas_feriados';
+const LS_RESTRICOES = 'quadroMetas_restricoes';
 const MAX_LOG = 500;
 
-// ── Carregar localStorage ──────────────────────────────────────
-function carregarLS() {
+// ── Leitura segura do localStorage ──────────────────────────────
+function lerLS(chave, fallback) {
   try {
-    const obras = JSON.parse(localStorage.getItem(LS_OBRAS) || 'null');
-    const tips  = JSON.parse(localStorage.getItem(LS_TIPOLOGIAS) || 'null');
-    const est   = JSON.parse(localStorage.getItem(LS_ESTADO) || 'null');
-    return {
-      obras: obras
-        ? Object.fromEntries(Object.keys(OBRAS_PADRAO).map(k => [k, { ...OBRAS_PADRAO[k], ...(obras[k] || {}) }]))
-        : { ...OBRAS_PADRAO },
-      tipologias: tips || [...TIPOLOGIAS_PADRAO],
-      estado:     est  || {},
-    };
+    const raw = localStorage.getItem(chave);
+    if (raw === null) return fallback;
+    return JSON.parse(raw) ?? fallback;
   } catch {
-    return { obras: { ...OBRAS_PADRAO }, tipologias: [...TIPOLOGIAS_PADRAO], estado: {} };
+    return fallback;
   }
 }
 
+// ── Inicialização lazy (chamada só uma vez) ─────────────────────
+function initObras() {
+  const salvo = lerLS(LS_OBRAS, null);
+  if (!salvo) return { ...OBRAS_PADRAO };
+  // Mescla com OBRAS_PADRAO para garantir campos novos
+  return Object.fromEntries(
+    Object.keys(OBRAS_PADRAO).map(k => [k, { ...OBRAS_PADRAO[k], ...(salvo[k] || {}) }])
+  );
+}
+
+function initTipologias() {
+  return lerLS(LS_TIPOLOGIAS, null) ?? [...TIPOLOGIAS_PADRAO];
+}
+
+function initEstado() {
+  return lerLS(LS_ESTADO, {});
+}
+
+function initFeriados() {
+  return lerLS(LS_FERIADOS, []);
+}
+
+function initRestricoes() {
+  return lerLS(LS_RESTRICOES, {});
+}
+
+// ── Histórico (não fica no state — direto no LS) ────────────────
 function carregarHistorico() {
-  try { return JSON.parse(localStorage.getItem(LS_HISTORICO) || '[]'); }
-  catch { return []; }
+  return lerLS(LS_HISTORICO, []);
 }
-
 function salvarHistorico(log) {
-  try { localStorage.setItem(LS_HISTORICO, JSON.stringify(log.slice(-MAX_LOG))); }
-  catch {}
+  try { localStorage.setItem(LS_HISTORICO, JSON.stringify(log.slice(-MAX_LOG))); } catch {}
 }
 
-function carregarFeriadosCustom() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(LS_FERIADOS) || 'null');
-    // Retorna union do Set padrão com os feriados customizados
-    return saved ? new Set([...FERIADOS, ...saved]) : new Set([...FERIADOS]);
-  } catch {
-    return new Set([...FERIADOS]);
-  }
-}
-
-// ── Hook principal ─────────────────────────────────────────────
+// ── Hook principal ──────────────────────────────────────────────
 export function useObra() {
-  const init = carregarLS();
+  // Lazy initializers — só executam na primeira renderização
+  const [obras,      setObras]      = useState(initObras);
+  const [tipologias, setTipologias] = useState(initTipologias);
+  const [estado,     setEstado]     = useState(initEstado);
+  const [feriadosCustom, setFeriadosCustom] = useState(initFeriados);
+  const [restricoes, setRestricoes] = useState(initRestricoes);
+  const [obraAtual,  setObraAtual]  = useState('TC');
 
-  const [obraAtual,   setObraAtual]   = useState('TC');
-  const [obras,       setObras]       = useState(init.obras);
-  const [tipologias,  setTipologias]  = useState(init.tipologias);
-  const [estado,      setEstado]      = useState(init.estado);
-  const [feriadosCustom, setFeriadosCustom] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(LS_FERIADOS) || '[]');
-    } catch { return []; }
-  });
-  const [restricoes, setRestricoes] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(LS_RESTRICOES) || '{}'); }
-    catch { return {}; }
-  });
+  // ── Persistência com debounce para evitar excesso de gravações ─
+  const debounceRef = useRef({});
 
-  // Persistir sempre que mudar
-  useEffect(() => {
-    try {
-      localStorage.setItem(LS_OBRAS,      JSON.stringify(obras));
-      localStorage.setItem(LS_TIPOLOGIAS, JSON.stringify(tipologias));
-      localStorage.setItem(LS_ESTADO,     JSON.stringify(estado));
-    } catch {}
-  }, [obras, tipologias, estado]);
+  function salvarComDebounce(chave, valor, delay = 300) {
+    clearTimeout(debounceRef.current[chave]);
+    debounceRef.current[chave] = setTimeout(() => {
+      try { localStorage.setItem(chave, JSON.stringify(valor)); } catch {}
+    }, delay);
+  }
 
-  useEffect(() => {
-    try { localStorage.setItem(LS_FERIADOS, JSON.stringify(feriadosCustom)); }
-    catch {}
-  }, [feriadosCustom]);
+  useEffect(() => { salvarComDebounce(LS_OBRAS,      obras);      }, [obras]);
+  useEffect(() => { salvarComDebounce(LS_TIPOLOGIAS, tipologias); }, [tipologias]);
+  useEffect(() => { salvarComDebounce(LS_ESTADO,     estado, 150);}, [estado]);
+  useEffect(() => { salvarComDebounce(LS_FERIADOS,   feriadosCustom); }, [feriadosCustom]);
+  useEffect(() => { salvarComDebounce(LS_RESTRICOES, restricoes); }, [restricoes]);
 
-  useEffect(() => {
-    try { localStorage.setItem(LS_RESTRICOES, JSON.stringify(restricoes)); }
-    catch {}
-  }, [restricoes]);
-
-  // ── Getters de meta ──────────────────────────────────────────
+  // ── getEstado ────────────────────────────────────────────────
   const getEstado = useCallback((obraId, pacoteId, unidadeCod) => {
     const key = `${obraId}__${pacoteId}__${unidadeCod}`;
-    return estado[obraId]?.[key] || { status: 'nao-iniciada', dataReal: null, observacao: '' };
+    return estado[obraId]?.[key] ?? {
+      status:               'nao-iniciada',
+      dataPlanejada:        null,
+      dataReprogramada:     null,
+      dataReal:             null,
+      programadoManualmente: false,
+      observacao:           '',
+    };
   }, [estado]);
 
+  // ── setEstadoMeta ────────────────────────────────────────────
   const setEstadoMeta = useCallback((obraId, pacoteId, unidadeCod, novo, userLabel) => {
     const key = `${obraId}__${pacoteId}__${unidadeCod}`;
 
-    // Gravar histórico para mudanças relevantes
-    const temMudancaRelevante =
-      novo.status !== undefined ||
-      novo.dataPlanejada !== undefined ||
-      novo.dataReprogramada !== undefined ||
-      novo.dataReal !== undefined;
-
-    if (temMudancaRelevante) {
+    // Histórico para mudanças relevantes
+    if (
+      novo.status            !== undefined ||
+      novo.dataPlanejada     !== undefined ||
+      novo.dataReprogramada  !== undefined ||
+      novo.dataReal          !== undefined
+    ) {
       const log = carregarHistorico();
       log.push({
-        ts:         new Date().toISOString(),
-        obraId,
-        pacoteId,
-        unidadeCod,
-        campos:     novo,
-        usuario:    userLabel || 'Sistema',
+        ts: new Date().toISOString(),
+        obraId, pacoteId, unidadeCod,
+        campos:  novo,
+        usuario: userLabel || 'Sistema',
       });
       salvarHistorico(log);
     }
@@ -123,25 +135,24 @@ export function useObra() {
       ...prev,
       [obraId]: {
         ...prev[obraId],
-        [key]: { ...(prev[obraId]?.[key] || {}), ...novo },
+        [key]: { ...(prev[obraId]?.[key] ?? {}), ...novo },
       },
     }));
   }, []);
 
   // ── Histórico ────────────────────────────────────────────────
   const getHistorico = useCallback((obraId, pacoteId, unidadeCod) => {
-    const log = carregarHistorico();
-    return log
+    return carregarHistorico()
       .filter(e =>
-        (!obraId     || e.obraId     === obraId)     &&
-        (!pacoteId   || e.pacoteId   === pacoteId)   &&
+        (!obraId     || e.obraId     === obraId)   &&
+        (!pacoteId   || e.pacoteId   === pacoteId) &&
         (!unidadeCod || e.unidadeCod === unidadeCod)
       )
       .reverse();
   }, []);
 
   const limparHistorico = useCallback(() => {
-    localStorage.removeItem(LS_HISTORICO);
+    try { localStorage.removeItem(LS_HISTORICO); } catch {}
   }, []);
 
   // ── Obras ────────────────────────────────────────────────────
@@ -161,7 +172,7 @@ export function useObra() {
         ciclos:      ['A','B','C','D'],
         diasPorMeta: 1,
         tipologia:   novaObra.tipologiaId || 'TC',
-        dataInicio:  novaObra.dataInicio || null,
+        dataInicio:  novaObra.dataInicio  || null,
         dataTermino: novaObra.dataTermino || null,
         obraAnterior: null,
         sequencia:   'ABCD',
@@ -180,7 +191,7 @@ export function useObra() {
       ? Math.ceil((tip.pavimentos - 1) * tip.ciclos.length * (tip.diasPorMeta || 1))
       : 177;
     const obra    = obras[obraId];
-    const termino = obra.dataInicio ? addDiasUteis(obra.dataInicio, diasNecessarios) : obra.dataTermino;
+    const termino = obra?.dataInicio ? addDiasUteis(obra.dataInicio, diasNecessarios) : obra?.dataTermino;
     atualizarObra(obraId, {
       tipologia:   tipId,
       diasPorMeta: tip?.diasPorMeta || 1,
@@ -198,29 +209,29 @@ export function useObra() {
     setTipologias(prev => prev.filter((_, i) => i !== idx));
   }, []);
 
-  // ── Datas default ────────────────────────────────────────────
+  // ── inicializarDatas — só seta data se a obra não tiver ──────
+  // IMPORTANTE: não sobrescreve datas já salvas
   const inicializarDatas = useCallback(() => {
     const hj = toDateStr(new Date());
     setObras(prev => {
+      let mudou = false;
       const next = { ...prev };
       Object.keys(next).forEach(id => {
         if (!next[id].dataInicio) {
           next[id] = { ...next[id], dataInicio: hj, dataTermino: addDiasUteis(hj, 177) };
+          mudou = true;
         }
       });
-      return next;
+      return mudou ? next : prev; // retorna o mesmo objeto se nada mudou
     });
   }, []);
 
   // ── Base Zero ────────────────────────────────────────────────
   const salvarBaseZero = useCallback((obraId, planejamento) => {
     try {
-      const existente = JSON.parse(localStorage.getItem(LS_BASE_ZERO) || '{}');
-      if (existente[obraId]) return { ok: false, msg: 'Base Zero já existe para esta obra. Uma nova Base Zero exige alinhamento e um novo arquivo.' };
-      existente[obraId] = {
-        criadaEm: new Date().toISOString(),
-        planejamento,  // snapshot do estado { key: { dataPlanejada, ... } }
-      };
+      const existente = lerLS(LS_BASE_ZERO, {});
+      if (existente[obraId]) return { ok: false, msg: 'Base Zero já existe para esta obra.' };
+      existente[obraId] = { criadaEm: new Date().toISOString(), planejamento };
       localStorage.setItem(LS_BASE_ZERO, JSON.stringify(existente));
       return { ok: true };
     } catch {
@@ -228,21 +239,10 @@ export function useObra() {
     }
   }, []);
 
-  const getBaseZero = useCallback((obraId) => {
-    try {
-      const data = JSON.parse(localStorage.getItem(LS_BASE_ZERO) || '{}');
-      return data[obraId] || null;
-    } catch { return null; }
-  }, []);
+  const getBaseZero  = useCallback((obraId) => lerLS(LS_BASE_ZERO, {})[obraId] ?? null, []);
+  const temBaseZero  = useCallback((obraId) => !!lerLS(LS_BASE_ZERO, {})[obraId],        []);
 
-  const temBaseZero = useCallback((obraId) => {
-    try {
-      const data = JSON.parse(localStorage.getItem(LS_BASE_ZERO) || '{}');
-      return !!data[obraId];
-    } catch { return false; }
-  }, []);
-
-  // ── Feriados customizados ────────────────────────────────────
+  // ── Feriados ─────────────────────────────────────────────────
   const adicionarFeriado = useCallback((dateStr) => {
     setFeriadosCustom(prev => prev.includes(dateStr) ? prev : [...prev, dateStr]);
   }, []);
@@ -254,40 +254,32 @@ export function useObra() {
   const getFeriadosCustom = useCallback(() => feriadosCustom, [feriadosCustom]);
 
   // ── Restrições ───────────────────────────────────────────────
-  const getRestricoes = useCallback((obraId) => {
-    return restricoes[obraId] || [];
-  }, [restricoes]);
+  const getRestricoes = useCallback((obraId) => restricoes[obraId] ?? [], [restricoes]);
 
   const adicionarRestricao = useCallback((obraId, restricao) => {
-    const nova = {
-      ...restricao,
-      id:       Date.now(),
-      criadaEm: new Date().toISOString(),
-      status:   'aberta',
-    };
-    setRestricoes(prev => ({
-      ...prev,
-      [obraId]: [...(prev[obraId] || []), nova],
-    }));
+    const nova = { ...restricao, id: Date.now(), criadaEm: new Date().toISOString(), status: 'aberta' };
+    setRestricoes(prev => ({ ...prev, [obraId]: [...(prev[obraId] ?? []), nova] }));
     return nova.id;
   }, []);
 
   const atualizarRestricao = useCallback((obraId, id, campos) => {
     setRestricoes(prev => ({
       ...prev,
-      [obraId]: (prev[obraId] || []).map(r => r.id === id ? { ...r, ...campos } : r),
+      [obraId]: (prev[obraId] ?? []).map(r => r.id === id ? { ...r, ...campos } : r),
     }));
   }, []);
 
   const removerRestricao = useCallback((obraId, id) => {
     setRestricoes(prev => ({
       ...prev,
-      [obraId]: (prev[obraId] || []).filter(r => r.id !== id),
+      [obraId]: (prev[obraId] ?? []).filter(r => r.id !== id),
     }));
   }, []);
 
+  // ── getDiasUteisEntre (exposto para App.jsx) ─────────────────
+  // Importado diretamente via import no topo do arquivo
   return {
-    obraAtual,  setObraAtual,
+    obraAtual, setObraAtual,
     obras,
     tipologias,
     estado,
@@ -302,16 +294,13 @@ export function useObra() {
     inicializarDatas,
     getHistorico,
     limparHistorico,
-    // Base Zero
     salvarBaseZero,
     getBaseZero,
     temBaseZero,
-    // Feriados
     feriadosCustom,
     adicionarFeriado,
     removerFeriado,
     getFeriadosCustom,
-    // Restrições
     getRestricoes,
     adicionarRestricao,
     atualizarRestricao,
