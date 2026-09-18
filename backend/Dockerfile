@@ -2,15 +2,27 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instala Apache + PHP sem imagem base php:apache (evita MPM conflict)
+# Instala Apache + PHP
 RUN apt-get update && apt-get install -y \
     apache2 \
     php8.1 \
     php8.1-mysql \
     libapache2-mod-php8.1 \
-    && a2enmod rewrite \
-    && sed -i "s/AllowOverride None/AllowOverride All/g" /etc/apache2/apache2.conf \
     && rm -rf /var/lib/apt/lists/*
+
+# Habilita mod_rewrite
+RUN a2enmod rewrite
+
+# Remove pagina padrao do Ubuntu que bloqueia nosso index.php
+RUN rm -f /var/www/html/index.html
+
+# Configura Apache para permitir .htaccess e PHP em /var/www/html
+RUN echo '<Directory /var/www/html>\n\
+    Options Indexes FollowSymLinks\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>' > /etc/apache2/conf-available/quadro.conf \
+    && a2enconf quadro
 
 # Copia API e banco
 COPY ./api /var/www/html
