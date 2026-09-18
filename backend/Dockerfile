@@ -1,24 +1,31 @@
 FROM php:8.1-apache
 
-# Cache bust - forca rebuild sem cache
-ARG CACHEBUST=2
+ARG CACHEBUST=3
 
 # Extensao MySQL
 RUN docker-php-ext-install pdo_mysql mysqli
 
-# Habilita rewrite, corrige MPM, permite .htaccess
-RUN a2enmod rewrite \
-    && a2dismod mpm_event 2>/dev/null || true \
-    && a2enmod mpm_prefork 2>/dev/null || true \
+# Corrige MPM: remove mpm_event e mpm_worker, deixa so mpm_prefork
+# Faz isso manipulando os symlinks diretamente (mais confiavel que a2dismod)
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
+          /etc/apache2/mods-enabled/mpm_event.conf \
+          /etc/apache2/mods-enabled/mpm_worker.load \
+          /etc/apache2/mods-enabled/mpm_worker.conf \
+    && ln -sf /etc/apache2/mods-available/mpm_prefork.load \
+              /etc/apache2/mods-enabled/mpm_prefork.load \
+    && ln -sf /etc/apache2/mods-available/mpm_prefork.conf \
+              /etc/apache2/mods-enabled/mpm_prefork.conf
+
+# Rewrite + AllowOverride
+RUN ln -sf /etc/apache2/mods-available/rewrite.load \
+           /etc/apache2/mods-enabled/rewrite.load \
     && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
 # Copia API
 COPY ./api /var/www/html
-
-# Remove index.html padrao
 RUN rm -f /var/www/html/index.html
 
-# Copia SQL para dentro da imagem junto com a API
+# Copia SQL
 COPY ./db/schema.sql /var/www/html/schema.sql
 COPY ./db/seed.sql   /var/www/html/seed.sql
 
