@@ -5,7 +5,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/core/db.php';
 
-const SCHEMA_SQL = <<<SQL
+const SCHEMA_SQL = <<<'SQL'
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS sessoes (
 SET FOREIGN_KEY_CHECKS = 1;
 SQL;
 
-const SEED_SQL = <<<SQL
+const SEED_SQL = <<<'SQL'
 INSERT INTO usuarios (perfil, label, icone, cor, senha_hash) VALUES
 ('admin','Administrador','👑','#1d4ed8','$2y$12$v9NkEg4k8JiyU.gmuU8A9ejlYUyhqCiOgjkQOAdHtQkn2iI/rjExG'),
 ('engenheiro','Engenheiro','🏗','#059669','$2y$12$7Osl94SJshRwkSngwcEzd.MXdhDs54tyZxhs.o8shngEj2RSR94Fe'),
