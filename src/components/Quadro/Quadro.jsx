@@ -57,12 +57,12 @@ export default function Quadro({
   const [modalRestricoes, setModalRestricoes]  = useState(false);
   const [modalFeriados,   setModalFeriados]    = useState(false);
   const [modalReprog,     setModalReprog]      = useState(false);
-  const [macroFluxo,    setMacroFluxo]    = useState('Todos');
-  const [microFluxo,    setMicroFluxo]    = useState('Todos');
-  const [ocultarFds,    setOcultarFds]    = useState(false);
-  const [ocultarFer,    setOcultarFer]    = useState(false);
-  const [periodo,       setPeriodo]       = useState('semana');
-  const [qtdPeriodo,    setQtdPeriodo]    = useState(1); // quantidade de períodos
+  const [macroFluxo,    setMacroFluxo]    = useState(() => localStorage.getItem('qm_macro') || 'Todos');
+  const [microFluxo,    setMicroFluxo]    = useState(() => localStorage.getItem('qm_micro') || 'Todos');
+  const [ocultarFds,    setOcultarFds]    = useState(() => localStorage.getItem('qm_ocultar_fds') === '1');
+  const [ocultarFer,    setOcultarFer]    = useState(() => localStorage.getItem('qm_ocultar_fer') === '1');
+  const [periodo,       setPeriodo]       = useState(() => localStorage.getItem('qm_periodo') || 'semana');
+  const [qtdPeriodo,    setQtdPeriodo]    = useState(() => Number(localStorage.getItem('qm_qtd_periodo') || '1'));
   const [dragInfo,      setDragInfo]      = useState(null);       // drag & drop
   const [zapLinks,      setZapLinks]      = useState(() => {      // zaproid links
     try { return JSON.parse(localStorage.getItem('quadro_zapLinks') || '{}'); } catch { return {}; }
@@ -75,6 +75,14 @@ export default function Quadro({
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), dur);
   }
+
+  // ── Persiste preferências de view no localStorage ─────────────
+  useEffect(() => { localStorage.setItem('qm_periodo',     periodo);           }, [periodo]);
+  useEffect(() => { localStorage.setItem('qm_qtd_periodo', String(qtdPeriodo));}, [qtdPeriodo]);
+  useEffect(() => { localStorage.setItem('qm_macro',       macroFluxo);        }, [macroFluxo]);
+  useEffect(() => { localStorage.setItem('qm_micro',       microFluxo);        }, [microFluxo]);
+  useEffect(() => { localStorage.setItem('qm_ocultar_fds', ocultarFds?'1':'0');}, [ocultarFds]);
+  useEffect(() => { localStorage.setItem('qm_ocultar_fer', ocultarFer?'1':'0');}, [ocultarFer]);
 
   // ── Colunas visíveis filtradas pelo período ───────────────────
   const todasColunas = useMemo(() => {

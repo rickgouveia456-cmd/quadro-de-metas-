@@ -1,21 +1,17 @@
 // ================================================================
 // useObra — estado global de obras, tipologias e metas
 //
-// PERSISTÊNCIA: usa localStorage com debounce de 300ms para evitar
-// gravações excessivas. O estado é lido UMA VEZ na inicialização
-// (função lazy do useState) e salvo a cada mudança.
-//
-// FORMATO DO ESTADO:
-//   estado = {
-//     "TC": {
-//       "TC__GRA-VAO__1A": { status, dataPlanejada, ... },
-//       ...
-//     }
-//   }
+// PERSISTÊNCIA HÍBRIDA:
+//   1. Lê do localStorage na inicialização (instantâneo)
+//   2. Tenta sincronizar com a API em background
+//   3. Salva no localStorage a cada mudança (imediato)
+//   4. Salva na API a cada mudança (async, sem bloquear UI)
+//   5. No beforeunload: flush síncrono para localStorage
 // ================================================================
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { OBRAS_PADRAO, TIPOLOGIAS_PADRAO, FERIADOS } from '../data/pacotes';
 import { addDiasUteis, toDateStr } from '../data/datas';
+import { metas as apiMetas, obras as apiObras, feriados as apiFeriados, restricoes as apiRestricoes, healthCheck } from '../services/api';
 
 const LS_ESTADO     = 'quadroMetas_estado';
 const LS_OBRAS      = 'quadroMetas_obras';
@@ -128,6 +124,63 @@ export function useObra() {
     return () => window.removeEventListener('beforeunload', flush);
   }, []); // monta uma vez — usa refs para sempre ter dados atuais
 
+  // ── Sync com API em background ────────────────────────────────
+  // Ao montar: tenta carregar estado do banco (se API disponível)
+  const [apiOnline, setApiOnline] = useState(false);
+  const apiOnlineRef = useRef(false);
+  const obraAtualRef = useRef(obraAtual);
+  useEffect(() => { obraAtualRef.current = obraAtual; }, [obraAtual]);
+  useEffect(() => { apiOnlineRef.current = apiOnline; }, [apiOnline]);
+
+  useEffect(() => {
+    async function syncDobanco() {
+      const ok = await healthCheck();
+      setApiOnline(ok);
+      if (!ok) return;
+
+      try {
+        // Carrega obras do banco
+        const resObras = await apiObras.listar();
+        if (resObras.ok && Array.isArray(resObras.data)) {
+          const obrasDoB = {};
+          resObras.data.forEach(o => {
+            obrasDoB[o.codigo] = {
+              ...OBRAS_PADRAO[o.codigo],
+              ...o,
+              ciclos:      Array.isArray(o.ciclos) ? o.ciclos : (o.ciclos||'A,B,C,D').split(','),
+              aptosPosPav: o.aptosPorPav || o.aptos_por_pav || 4,
+              diasPorMeta: o.diasPorMeta || o.dias_por_meta || 1,
+            };
+          });
+          if (Object.keys(obrasDoB).length > 0) {
+            setObras(prev => ({ ...prev, ...obrasDoB }));
+          }
+        }
+
+        // Carrega estado das metas da obra atual
+        const obraId = obraAtualRef.current;
+        const resMetas = await apiMetas.carregar(obraId);
+        if (resMetas.ok && resMetas.data) {
+          const mapaApi = resMetas.data;
+          // Converte formato API { "pacote|unidade": {...} } para formato interno { obraId: { "obraId__pacote__unidade": {...} } }
+          const estadoConvertido = {};
+          Object.entries(mapaApi).forEach(([chave, val]) => {
+            const [pacote, unidade] = chave.split('|');
+            const keyInterna = `${obraId}__${pacote}__${unidade}`;
+            estadoConvertido[keyInterna] = val;
+          });
+          if (Object.keys(estadoConvertido).length > 0) {
+            setEstado(prev => ({
+              ...prev,
+              [obraId]: { ...(prev[obraId] || {}), ...estadoConvertido },
+            }));
+          }
+        }
+      } catch { /* silencioso */ }
+    }
+    syncDobanco();
+  }, []); // roda só uma vez ao montar
+
   // ── getEstado ────────────────────────────────────────────────
   const getEstado = useCallback((obraId, pacoteId, unidadeCod) => {
     const key = `${obraId}__${pacoteId}__${unidadeCod}`;
@@ -169,6 +222,11 @@ export function useObra() {
         [key]: { ...(prev[obraId]?.[key] ?? {}), ...novo },
       },
     }));
+
+    // Salva na API em background (sem bloquear UI)
+    if (apiOnlineRef.current) {
+      apiMetas.salvar(obraId, pacoteId, unidadeCod, novo, null).catch(() => {});
+    }
   }, []);
 
   // ── Histórico ────────────────────────────────────────────────
