@@ -1,6 +1,6 @@
 FROM php:8.1-fpm-alpine
 
-ARG CACHEBUST=20
+ARG CACHEBUST=30
 
 RUN apk add --no-cache nginx \
     && docker-php-ext-install pdo_mysql mysqli
