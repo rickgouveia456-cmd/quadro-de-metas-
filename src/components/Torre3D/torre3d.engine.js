@@ -74,17 +74,22 @@ export function buildTorre3D({ wrapper, canvas, pavimentos, ciclos=CICLOS_DEF, o
   scene.background=new THREE.Color(0xb8d4e8);
   scene.fog=new THREE.Fog(0xb8d4e8, 250, 500);
 
-  const W=wrapper.clientWidth||800, H=wrapper.clientHeight||600;
+  const W=wrapper.clientWidth||window.innerWidth||800;
+  const H=wrapper.clientHeight||window.innerHeight||600;
   camera=new THREE.PerspectiveCamera(35,W/H,0.5,600);
   camera.position.set(camPos.x,camPos.y,camPos.z);
   camera.lookAt(camLook.x,camLook.y,camLook.z);
 
-  renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance'});
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
   renderer.setSize(W,H);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
   renderer.shadowMap.enabled=false;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.1;
+
+  // ResizeObserver — detecta quando o wrapper ganha tamanho real
+  const ro = new ResizeObserver(() => onResize());
+  ro.observe(wrapper);
 
   // ── Luzes ─────────────────────────────────────────────────────
   scene.add(new THREE.AmbientLight(0xffffff,0.75));
@@ -574,15 +579,19 @@ export function buildTorre3D({ wrapper, canvas, pavimentos, ciclos=CICLOS_DEF, o
 
   function onResize(){
     if(!wrapper||!renderer)return;
-    camera.aspect=wrapper.clientWidth/wrapper.clientHeight;
+    const w=wrapper.clientWidth||window.innerWidth;
+    const h=wrapper.clientHeight||window.innerHeight;
+    if(w<10||h<10)return;
+    camera.aspect=w/h;
     camera.updateProjectionMatrix();
-    renderer.setSize(wrapper.clientWidth,wrapper.clientHeight);
+    renderer.setSize(w,h);
   }
 
   let lastRender = 0;
   function animate(now=0){
     rafId=requestAnimationFrame(animate);
-    if (now - lastRender < 1000 / 45) return;
+    // 60fps — renderiza a cada ~16.67ms
+    if (now - lastRender < 16) return;
     lastRender = now;
     // Órbita manual suave
     const k=0.07;
@@ -627,6 +636,7 @@ export function buildTorre3D({ wrapper, canvas, pavimentos, ciclos=CICLOS_DEF, o
     rotateRight(){ orbitTgt.theta+=0.35; },
     dispose(){
       cancelAnimationFrame(rafId);
+      ro.disconnect();
       canvas.removeEventListener('mousemove',onMM);
       canvas.removeEventListener('click',onClick);
       window.removeEventListener('resize',onResize);
