@@ -1,8 +1,6 @@
-# Forcas LF em todos os arquivos - necessario para Docker no Linux
-* text=auto eol=lf
-*.php text eol=lf
-*.json text eol=lf
-*.sql text eol=lf
-*.yml text eol=lf
-Dockerfile text eol=lf
-.htaccess text eol=lf
+# LF obrigatorio para arquivos do backend Docker
+backend/* text=auto eol=lf
+backend/**/*.php text eol=lf
+backend/**/*.sql text eol=lf
+backend/**/Dockerfile text eol=lf
+backend/**/.htaccess text eol=lf
