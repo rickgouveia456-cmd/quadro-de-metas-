@@ -3,8 +3,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npx serve dist -l 0.0.0.0:$PORT",
-    "healthcheckPath": "/",
-    "healthcheckTimeout": 30
+    "healthcheckPath": "/"
   }
 }
