@@ -13,6 +13,7 @@ function getDB(): PDO {
     $url = getenv('DATABASE_URL') ?: getenv('MYSQL_URL') ?: '';
 
     if ($url) {
+        $url  = trim($url);
         $p    = parse_url($url);
         $host = $p['host']                        ?? 'localhost';
         $port = $p['port']                        ?? 3306;
