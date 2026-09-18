@@ -62,13 +62,11 @@ export const FERIADOS = new Set([
 export const MESES_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
 export const OBRAS_PADRAO = {
-  TC: { nome:"Torre C", codigo:"TC", pavimentos:17, aptosPosPav:8, ciclos:["A","B","C","D"], diasPorMeta:1, tipologia:"TC", dataInicio:null, dataTermino:null, obraAnterior:null,   sequencia:"ABCD" },
-  TB: { nome:"Torre B", codigo:"TB", pavimentos:17, aptosPosPav:8, ciclos:["A","B","C","D"], diasPorMeta:1, tipologia:"TB", dataInicio:null, dataTermino:null, obraAnterior:"TC",   sequencia:"ABCD" },
-  TA: { nome:"Torre A", codigo:"TA", pavimentos:17, aptosPosPav:8, ciclos:["A","B","C","D"], diasPorMeta:1, tipologia:"TA", dataInicio:null, dataTermino:null, obraAnterior:"TB",   sequencia:"ABCD" },
+  TC: { nome:"Torre C", codigo:"TC", pavimentos:17, aptosPosPav:4, ciclos:["A","B","C","D"], diasPorMeta:1, tipologia:"TAKT4", dataInicio:null, dataTermino:null, obraAnterior:null, sequencia:"ABCD" },
+  TB: { nome:"Torre B", codigo:"TB", pavimentos:17, aptosPosPav:4, ciclos:["A","B","C","D"], diasPorMeta:1, tipologia:"TAKT4", dataInicio:null, dataTermino:null, obraAnterior:"TC",  sequencia:"ABCD" },
+  TA: { nome:"Torre A", codigo:"TA", pavimentos:17, aptosPosPav:4, ciclos:["A","B","C","D"], diasPorMeta:1, tipologia:"TAKT4", dataInicio:null, dataTermino:null, obraAnterior:"TB",  sequencia:"ABCD" },
 };
 
 export const TIPOLOGIAS_PADRAO = [
-  { id:"TC", nome:"Tipo TC", pavimentos:17, aptos:8, ciclos:["A","B","C","D"], diasPorMeta:1 },
-  { id:"TB", nome:"Tipo TB", pavimentos:17, aptos:8, ciclos:["A","B","C","D"], diasPorMeta:1 },
-  { id:"TA", nome:"Tipo TA", pavimentos:17, aptos:8, ciclos:["A","B","C","D"], diasPorMeta:1 },
+  { id:"TAKT4", nome:"Takt 4 (4 aptos/pav)", pavimentos:17, aptos:4, ciclos:["A","B","C","D"], diasPorMeta:1 },
 ];

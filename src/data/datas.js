@@ -78,22 +78,26 @@ export function gerarColunasDatas(dataInicio, qtdColunas = 177) {
 }
 
 export function gerarUnidades(obra, tipologias) {
-  const tip = tipologias.find(t => t.id === obra.tipologia) || null;
+  const tip = tipologias.find(t => t.id === obra.tipologia) || tipologias[0] || null;
   const totalPav = tip ? tip.pavimentos : (obra.pavimentos || 17);
   const ciclos   = tip ? tip.ciclos     : (obra.ciclos     || ['A','B','C','D']);
   const unidades = [];
+
   for (let p = 0; p < totalPav; p++) {
-    let codPav;
-    if (p === 0)               codPav = 'T';
-    else if (p === totalPav-1) codPav = 'COB';
-    else                       codPav = String(p);
-    if (codPav === 'COB') continue;
+    // Ultimo pavimento é cobertura — pula
+    if (p === totalPav - 1) continue;
+
+    // Pavimento 0 = Térreo (T), demais = número
+    const codPav = p === 0 ? 'T' : String(p);
+    const numPav = p === 0 ? 'T' : p;
+
     ciclos.forEach(ciclo => {
       unidades.push({
-        pav:   codPav === 'T' ? 'T' : Number(p),
+        pav:   numPav,
         ciclo,
-        cod:   `${codPav}${ciclo}`,
-        tipo:  ciclo === 'A' || ciclo === 'C' ? 'Tipo 3' : 'Tipo 4',
+        cod:   `${codPav}${ciclo}`,   // TA, TB, TC, TD, 1A, 1B... 17D
+        label: `${codPav} · Ciclo ${ciclo} (4 aptos)`,
+        tipo:  'Takt 4',
       });
     });
   }
