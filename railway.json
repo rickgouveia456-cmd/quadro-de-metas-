@@ -1,14 +1,11 @@
 {
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "backend/Dockerfile",
-    "buildContext": "backend"
+    "dockerfilePath": "Dockerfile.backend"
   },
   "deploy": {
-    "startCommand": "apache2-foreground",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 60,
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 3
+    "restartPolicyType": "ON_FAILURE"
   }
 }
