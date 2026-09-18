@@ -1,10 +1,18 @@
 FROM php:8.1-fpm-alpine
 
-ARG CACHEBUST=30
+ARG CACHEBUST=40
 
-RUN apk add --no-cache nginx \
-    && docker-php-ext-install pdo_mysql mysqli
+# Dependencias de compilacao para extensoes PHP
+RUN apk add --no-cache \
+    nginx \
+    build-base \
+    autoconf \
+    linux-headers
 
+# Instala extensoes PHP separadamente
+RUN docker-php-ext-install pdo pdo_mysql mysqli
+
+# Config Nginx
 RUN mkdir -p /etc/nginx/http.d && printf '\
 server {\n\
     listen 80;\n\
