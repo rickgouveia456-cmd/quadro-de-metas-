@@ -1,14 +1,14 @@
 version: "3.9"
 
 services:
-  # ── MariaDB ────────────────────────────────────────────────
+  # ── MariaDB local (apenas para dev) ───────────────────────
   db:
     image: mariadb:11
     container_name: quadro_db
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret}
-      MYSQL_DATABASE:      ${DB_NAME:-quadro_metas}
+      MYSQL_DATABASE:      ${DB_NAME:-railway}
       MYSQL_USER:          ${DB_USER:-quadro}
       MYSQL_PASSWORD:      ${DB_PASSWORD:-quadro_pass}
     volumes:
@@ -22,6 +22,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    profiles:
+      - dev
 
   # ── PHP + Apache ───────────────────────────────────────────
   api:
@@ -31,19 +33,18 @@ services:
     container_name: quadro_api
     restart: unless-stopped
     environment:
-      DB_HOST:     db
-      DB_NAME:     ${DB_NAME:-quadro_metas}
-      DB_USER:     ${DB_USER:-quadro}
-      DB_PASSWORD: ${DB_PASSWORD:-quadro_pass}
-      APP_ENV:     ${APP_ENV:-production}
-      APP_SECRET:  ${APP_SECRET:-change_me_in_production}
-    volumes:
-      - ./api:/var/www/html
+      # Para Railway: define DATABASE_URL como variável de ambiente
+      DATABASE_URL: ${DATABASE_URL:-mysql://quadro:quadro_pass@db:3306/railway}
+      APP_ENV:      ${APP_ENV:-production}
+      APP_SECRET:   ${APP_SECRET:-change_me_in_production}
+      CORS_ORIGIN:  ${CORS_ORIGIN:-*}
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8080:80"
+    profiles:
+      - dev
 
   # ── phpMyAdmin (dev only) ──────────────────────────────────
   phpmyadmin:
@@ -52,14 +53,14 @@ services:
     restart: unless-stopped
     environment:
       PMA_HOST:     db
-      PMA_USER:     ${DB_USER:-quadro}
-      PMA_PASSWORD: ${DB_PASSWORD:-quadro_pass}
+      PMA_USER:     root
+      PMA_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret}
     ports:
       - "8081:80"
     depends_on:
       - db
     profiles:
-      - dev   # só sobe com: docker compose --profile dev up
+      - dev
 
 volumes:
   db_data:

@@ -4,29 +4,61 @@
 // ================================================================
 declare(strict_types=1);
 
-// Remove trailing slash do PATH_INFO
-$uri = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+require_once __DIR__ . '/core/db.php';
+require_once __DIR__ . '/init_db.php';
 
-// Extrai segmentos após /api
-$base    = '/api';
-$path    = ltrim(substr($uri, strlen($base)), '/');
+// Auto-cria tabelas se banco estiver vazio (primeira vez no Railway)
+autoInit();
+
+// Remove trailing slash do PATH_INFO
+$uri  = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+$base = '/api';
+$path = ltrim(substr($uri, strlen($base)), '/');
+
 $partes  = explode('/', $path);
 $recurso = $partes[0] ?? '';
 $param   = $partes[1] ?? '';
 
-// Repassa parâmetros de URL como $_GET para as rotas
-if ($param && !isset($_GET[$recurso === 'obras' ? 'codigo' : 'id'])) {
+// Repassa parâmetro de URL para $_GET
+if ($param) {
     $_GET[$recurso === 'obras' ? 'codigo' : 'id'] = $param;
 }
 $_GET['sub'] = $param;
 
-// Health check
+// ── Health check ─────────────────────────────────────────────
 if ($recurso === 'health') {
     header('Content-Type: application/json');
-    echo json_encode(['ok' => true, 'ts' => date('c')]);
+    $dbOk = false;
+    try { getDB()->query('SELECT 1'); $dbOk = true; } catch (\Throwable) {}
+    http_response_code($dbOk ? 200 : 503);
+    echo json_encode([
+        'ok'  => $dbOk,
+        'db'  => $dbOk ? 'connected' : 'error',
+        'ts'  => date('c'),
+        'env' => getenv('APP_ENV') ?: 'unknown',
+    ]);
     exit;
 }
 
+// ── Endpoint de init manual (útil para primeiro deploy) ──────
+if ($recurso === 'setup') {
+    header('Content-Type: application/json');
+    // Só permite se não houver usuários ainda (banco virgem) ou via token de setup
+    $setupToken = getenv('SETUP_TOKEN') ?: '';
+    $reqToken   = $_GET['token'] ?? ($_SERVER['HTTP_X_SETUP_TOKEN'] ?? '');
+    $db = getDB();
+    $temUsuarios = $db->query("SHOW TABLES LIKE 'usuarios'")->fetch();
+
+    if ($temUsuarios && (!$setupToken || $reqToken !== $setupToken)) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'msg' => 'Setup já realizado.']);
+        exit;
+    }
+    echo json_encode(initDb());
+    exit;
+}
+
+// ── Rotas da API ─────────────────────────────────────────────
 $routes = [
     'auth'       => __DIR__ . '/routes/auth.php',
     'obras'      => __DIR__ . '/routes/obras.php',
@@ -37,9 +69,9 @@ $routes = [
 ];
 
 if (!isset($routes[$recurso])) {
-    http_response_code(404);
     header('Content-Type: application/json');
-    echo json_encode(['ok' => false, 'msg' => "Recurso '{$recurso}' não encontrado"]);
+    http_response_code(404);
+    echo json_encode(['ok' => false, 'msg' => "Recurso '{$recurso}' nao encontrado"]);
     exit;
 }
 
